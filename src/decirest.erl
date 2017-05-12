@@ -2,7 +2,8 @@
 -export([
   build_routes/1, build_routes/2,
   call_mro/3, call_mro/4, call_mro/5,
-  child_fun_factory/1
+  child_fun_factory/1,
+  child_url/2, child_url/3
 ]).
 
 
@@ -68,6 +69,20 @@ child_fun_factory(Resources) ->
   CsList = lists:flatten(lists:foldl(FFun, [], Resources)),
   fun(PR) -> proplists:get_all_values(PR, CsList) end.
 
+child_url(Module, Req) ->
+  child_url(Module, Req, #{relative => true}).
+
+child_url(Module, Req = #{path := Path}, #{relative := true}) ->
+  _ChildPath = case erlang:function_exported(Module, paths, 0) of
+                true ->
+                  [P | _] = Module:paths(),
+                  P;
+                false ->
+                  Module:name()
+              end,
+  cowboy_req:uri(Req, #{host => undefined, path => <<Path/binary, "/", (atom_to_binary(Module, latin1))/binary>>}).
+
+
 call_mro(Callback, Req, State) ->
   call_mro(Callback, Req, State, undefined, fun(_) -> true end).
 
@@ -75,7 +90,7 @@ call_mro(Callback, Req, State, Default) ->
   call_mro(Callback, Req, State, Default, fun(_) -> true end).
 
 call_mro(Callback, Req, State = #{mro := MRO}, Default, Continue) ->
-  call_mro(MRO, Callback, Req, State, Default, Continue, #{}).
+  call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}).
 
 call_mro([Mod | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
   {ModRes, Req, State} = CallbackRes = do_callback(Mod, Callback, Req0, State0, Default),
@@ -87,7 +102,7 @@ call_mro([Mod | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
       {Res, Req, State}
   end;
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
-  {Res, Req, State}.
+  {Res, Req, State#{mro_call => false}}.
 
 do_callback(Mod, Callback, Req, State, Default) ->
   case erlang:function_exported(Mod, Callback, 2) of
