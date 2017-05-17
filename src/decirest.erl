@@ -3,9 +3,18 @@
   build_routes/1, build_routes/2,
   call_mro/3, call_mro/4, call_mro/5,
   child_fun_factory/1,
-  child_url/2, child_url/3
+  child_url/2, child_url/3,
+  child_urls_map/3,
+  do_callback/5,
+  apply_with_default/4,
+  pretty_path/1
 ]).
 
+-ifdef(TEST).
+
+-include_lib("eunit/include/eunit.hrl").
+
+-endif.
 
 build_routes(Mod) ->
   build_routes(Mod, decirest_handler).
@@ -72,16 +81,35 @@ child_fun_factory(Resources) ->
 child_url(Module, Req) ->
   child_url(Module, Req, #{relative => true}).
 
-child_url(Module, Req = #{path := Path}, #{relative := true}) ->
-  _ChildPath = case erlang:function_exported(Module, paths, 0) of
+child_url(Module, #{path := Path}, #{relative := true}) ->
+  ChildPath = case erlang:function_exported(Module, paths, 0) of
                 true ->
                   [P | _] = Module:paths(),
                   P;
                 false ->
                   Module:name()
               end,
-  cowboy_req:uri(Req, #{host => undefined, path => <<Path/binary, "/", (atom_to_binary(Module, latin1))/binary>>}).
+  pretty_path([Path, "/", ChildPath]).
 
+child_urls_map(Children, Req, State) ->
+  child_urls_map(Children, Req, State, #{}).
+
+child_urls_map([Child | Children], Req, State, Map) ->
+  Key = << (Child:name())/binary, "_url">>,
+  Url = child_url(Child, Req),
+  child_urls_map(Children, Req, State, Map#{Key => Url});
+child_urls_map([], _Req, _State, Map) ->
+  Map.
+
+pretty_path(Path) when is_binary(Path) ->
+  case binary:replace(Path, <<"//">>, <<"/">>, [global]) of
+    Path ->
+      Path;
+    NewPath ->
+      pretty_path(NewPath)
+  end;
+pretty_path(Path) when is_list(Path) ->
+  pretty_path(iolist_to_binary(Path)).
 
 call_mro(Callback, Req, State) ->
   call_mro(Callback, Req, State, undefined, fun(_) -> true end).
@@ -92,8 +120,8 @@ call_mro(Callback, Req, State, Default) ->
 call_mro(Callback, Req, State = #{mro := MRO}, Default, Continue) ->
   call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}).
 
-call_mro([Mod | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
-  {ModRes, Req, State} = CallbackRes = do_callback(Mod, Callback, Req0, State0, Default),
+call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
+  {ModRes, Req, State} = CallbackRes = do_callback(Handler, Callback, Req0, State0#{module => Mod}, Default),
   Res = Res0#{Mod => ModRes},
   case Continue(CallbackRes) of
     true ->
@@ -111,9 +139,37 @@ do_callback(Mod, Callback, Req, State, Default) ->
     false ->
       case is_function(Default) of
         true ->
+          % TODO: do we have to send the Mod here, to know what to do,
+          %       or is it sufficient with the more elaborate MRO in status
           Default(Mod, Req, State);
         false ->
           {Default, Req, State}
       end
   end.
 
+apply_with_default(M, F, A, Default) ->
+  case erlang:function_exported(M, F, length(A)) of
+    true ->
+      erlang:apply(M, F, A);
+    false ->
+      case is_function(Default) of
+        true ->
+          erlang:apply(Default, A);
+        false ->
+          Default
+      end
+  end.
+
+-ifdef(TEST).
+
+child_url_test() ->
+  Req = #{
+    scheme => <<"http">>, host => <<"localhost">>, port => 8080,
+    path => Path = <<"/api/v1/company/1/">>, qs => <<"dummy=2785">>
+  },
+  ChildPath = "user",
+  Path = cowboy_req:uri(Req, #{host => undefined}),
+  <<"/api/v1/company/1/user">> = pretty_path([Path, "/", ChildPath]),
+  ok.
+
+-endif.

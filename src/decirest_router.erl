@@ -24,14 +24,14 @@ make_paths(Module, Options) ->
 prep_paths(Paths, Options) ->
   prep_paths(Paths, Options, []).
 
-prep_paths([PathDef | Paths], Options = #{pp_mod := Module}, Res) ->
+prep_paths([PathDef | Paths], Options = #{pp_mod := Module, state := State}, Res) ->
   {Path, Handler, PState} = case PathDef of
                           {P, H, S} ->
-                            {P, H, S#{module => Module}};
+                            MRO = maps:get(mro, S, [{H, Module}]),
+                            {P, H, S#{module => Module, mro => MRO}};
                           {P, H} ->
-                            {P, H, #{module => Module}}
+                            {P, H, #{module => Module, mro => [{H, Module}]}}
                         end,
-  State = maps:get(state, Options, #{}),
   prep_paths(Paths, Options, [{Path, Handler, maps:merge(State, PState)} | Res]);
 prep_paths([], _Options, Res) ->
   Res.
@@ -45,7 +45,6 @@ build_routes(Modules, Options) when is_list(Modules) ->
   ChildFun = decirest:child_fun_factory(Modules),
   build_routes(Modules, Options#{state => State#{child_fun => ChildFun}}, []);
 build_routes(Module, Options) ->
-  %Module:module_info(),
   State = maps:get(state, Options, #{}),
   ChildFun = decirest:child_fun_factory([Module]),
   build_routes([Module], Options#{state => State#{child_fun => ChildFun}}, []).
@@ -55,8 +54,10 @@ build_routes([Module | Modules], Options, Res) ->
 build_routes([], _Options, Res) ->
   [{'_', [], lists:flatten(Res)}].
 
-build_module_routes(Module, Options = #{state := State = #{mro := MRO}}) ->
-  case sets:is_element(Module, sets:from_list(MRO)) of
+build_module_routes(Module, Options) ->
+  Modules = maps:get(modules, Options, []),
+  State = maps:get(state, Options, #{}),
+  case sets:is_element(Module, sets:from_list(Modules)) of
     true ->
       [];
     false ->
@@ -64,12 +65,9 @@ build_module_routes(Module, Options = #{state := State = #{mro := MRO}}) ->
         true ->
           Module:get_routes(Options);
         false ->
-          br(Module, Options#{state => State#{mro => [Module | MRO]}})
+          br(Module, Options#{state => State, modules => [Module | Modules]})
       end
-  end;
-build_module_routes(Module, Options) ->
-  State = maps:get(state, Options, #{}),
-  build_module_routes(Module, Options#{state => State#{mro => []}}).
+  end.
 
 
 br(Module, Options) ->
@@ -90,11 +88,15 @@ merge_with_parents([], _Paths, _Options, Res) ->
 merge_with_parent([{_Path, _Handler, #{children := false}} | ParentPaths], Paths, Res) ->
   merge_with_parent(ParentPaths, Paths, Res);
 merge_with_parent([{Path, _Handler, #{} = PState} | ParentPaths], Paths, Res) ->
-  NewPaths = [{[Path | P], H, maps:merge(PState, maps:without([mro], S))} || {P, H, S} <- Paths],
+  %NewPaths = [{[Path | P], H, maps:merge(PState, maps:without([mro], S))} || {P, H, S} <- Paths],
+  NewPaths = [{[Path | P], H, state_merge(PState, S)} || {P, H, S} <- Paths],
   merge_with_parent(ParentPaths, Paths, [NewPaths | Res]);
 merge_with_parent([{'_', _, ParentPaths} | Routes], Paths, Res) ->
   merge_with_parent(Routes, Paths, merge_with_parent(ParentPaths, Paths, Res));
 merge_with_parent([], _Paths, Res) ->
   Res.
 
+state_merge(ParentState = #{mro := PMRO}, ModuleState = #{mro := MMRO}) ->
+  State = maps:merge(ParentState, ModuleState),
+  State#{mro => PMRO ++ MMRO}.
 
