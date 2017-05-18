@@ -3,11 +3,12 @@
   build_routes/1, build_routes/2,
   call_mro/3, call_mro/4, call_mro/5,
   child_fun_factory/1,
-  child_url/2, child_url/3,
+  child_url/3,
   child_urls_map/3,
   do_callback/5,
   apply_with_default/4,
-  pretty_path/1
+  pretty_path/1,
+  t2b/1
 ]).
 
 -ifdef(TEST).
@@ -78,14 +79,15 @@ child_fun_factory(Resources) ->
   CsList = lists:flatten(lists:foldl(FFun, [], Resources)),
   fun(PR) -> proplists:get_all_values(PR, CsList) end.
 
-child_url(Module, Req) ->
-  child_url(Module, Req, #{relative => true}).
-
-child_url(Module, #{path := Path}, #{relative := true}) ->
+child_url(Module, #{path := Path}, _State) ->
   ChildPath = case erlang:function_exported(Module, paths, 0) of
                 true ->
-                  [P | _] = Module:paths(),
-                  P;
+                  case Module:paths() of
+                    [{P, _} | _] ->
+                      P;
+                    [{P, _, _} | _] ->
+                      P
+                  end;
                 false ->
                   Module:name()
               end,
@@ -95,9 +97,13 @@ child_urls_map(Children, Req, State) ->
   child_urls_map(Children, Req, State, #{}).
 
 child_urls_map([Child | Children], Req, State, Map) ->
-  Key = << (Child:name())/binary, "_url">>,
-  Url = child_url(Child, Req),
-  child_urls_map(Children, Req, State, Map#{Key => Url});
+  case apply_with_default(Child, child_url, [Child, Req, State], fun child_url/3) of
+    #{} = Res ->
+      child_urls_map(Children, Req, State, maps:merge(Map, Res));
+    Url ->
+      Key = << (Child:name())/binary, "_url">>,
+      child_urls_map(Children, Req, State, Map#{Key => Url})
+  end;
 child_urls_map([], _Req, _State, Map) ->
   Map.
 
@@ -139,9 +145,9 @@ do_callback(Mod, Callback, Req, State, Default) ->
     false ->
       case is_function(Default) of
         true ->
-          % TODO: do we have to send the Mod here, to know what to do,
-          %       or is it sufficient with the more elaborate MRO in status
-          Default(Mod, Req, State);
+          % TODO: we don't send Mod, the more specified MRO in state should be enough
+          % Default(Mod, Req, State);
+          Default(Req, State);
         false ->
           {Default, Req, State}
       end
@@ -159,6 +165,11 @@ apply_with_default(M, F, A, Default) ->
           Default
       end
   end.
+
+t2b(V) when is_integer(V) -> integer_to_binary(V);
+t2b(V) when is_list(V) -> list_to_binary(V);
+t2b(V) when is_atom(V) -> atom_to_binary(V, utf8);
+t2b(V) when is_binary(V) -> V.
 
 -ifdef(TEST).
 

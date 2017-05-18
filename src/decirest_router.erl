@@ -59,13 +59,13 @@ build_module_routes(Module, Options) ->
   State = maps:get(state, Options, #{}),
   case sets:is_element(Module, sets:from_list(Modules)) of
     true ->
-      [];
+      []; % break possible endless recursion if resources are child of each other
     false ->
       case erlang:function_exported(Module, get_routes, 1) of
         true ->
-          Module:get_routes(Options);
+          Module:get_routes(Options#{state => State#{main_module => Module}});
         false ->
-          br(Module, Options#{state => State, modules => [Module | Modules]})
+          br(Module, Options#{state => State#{main_module => Module}, modules => [Module | Modules]})
       end
   end.
 
@@ -80,7 +80,7 @@ Paths = get_paths(Module, Options),
   end.
 
 merge_with_parents([Parent | Parents], Paths, Options, Res) ->
-  ParentRoutes = lists:flatten(build_module_routes(Parent, Options)),
+  ParentRoutes = lists:flatten(build_module_routes(Parent, Options#{imaparent => true})),
   merge_with_parents(Parents, Paths, Options, merge_with_parent(ParentRoutes, Paths, Res));
 merge_with_parents([], _Paths, _Options, Res) ->
   Res.
