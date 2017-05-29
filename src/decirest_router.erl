@@ -51,8 +51,10 @@ build_routes(Module, Options) ->
 
 build_routes([Module | Modules], Options, Res) ->
   build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
+build_routes([], #{nostatic := true}, Res) ->
+  [{'_', [], lists:flatten(Res)}];
 build_routes([], _Options, Res) ->
-  [{'_', [], lists:flatten(Res)}].
+  [{'_', [], lists:flatten([{"/assets/[...]", cowboy_static, {priv_dir, decirest, "static/assets"}} | Res])}].
 
 build_module_routes(Module, Options) ->
   Modules = maps:get(modules, Options, []),

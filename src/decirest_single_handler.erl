@@ -22,34 +22,42 @@ content_types_provided(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, content_types_provided,Req, State, Default).
 
 to_fun(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, to_fun, Req, State, fun to_fun_internal/2).
+  decirest:do_callback(Module, to_fun, Req, State, fun to_fun_default/2).
 
-to_fun_internal(Req, State) ->
+to_fun_default(Req, State) ->
   to_json(Req, State).
 
 to_html(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, to_html, Req, State, fun to_html_internal/2).
+  decirest:do_callback(Module, to_html, Req, State, fun to_html_default/2).
 
-to_html_internal(Req, State) ->
+to_html_default(Req, State = #{module := Module}) ->
   {Json, ReqNew, StateNew} = to_json(Req, State),
-  {<<"<html><body><pre>\n", Json/binary, "\n</pre></body></html>">>, ReqNew, StateNew}.
+  Title = Module:name(),
+  Context = [
+    {title, Title},
+    {single_data, Json}
+  ],
+  {ok, Body} = std_response_html_dtl:render(Context),
+  {Body, ReqNew, StateNew}.
 
 to_json(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, to_json, Req, State, fun to_json_internal/2).
+  decirest:do_callback(Module, to_json, Req, State, fun to_json_default/2).
 
-to_json_internal(Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
+to_json_default(Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
   #{Module := #{data := Data}} = RState,
   ChildUrls = decirest:child_urls_map(ChildFun(Module), Req, State),
   {jsx:encode(maps:merge(ChildUrls, Data), [indent]), Req, State}.
 
 resource_exists(Req, State = #{module := Module}) ->
-  decirest:apply_with_default(Module, resource_exists, [Req, State], fun resource_exists_internal/2).
+  decirest:apply_with_default(Module, resource_exists, [Req, State], fun resource_exists_default/2).
 
-resource_exists_internal(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
+resource_exists_default(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
   lager:debug("in resource exist single state ~p~n", [State]),
   case Module:fetch_data(cowboy_req:bindings(Req), RState) of
     {ok, [Data]} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
+    {ok, []} ->
+      {false, Req, State};
     {ok, Data} when is_list(Data) ->
       ReqNew = cowboy_req:reply(409, Req),
       {stop, ReqNew, State};
@@ -58,7 +66,7 @@ resource_exists_internal(Req, State = #{mro_call := true, module := Module, rsta
     {error, _Reason} ->
       {false, Req, State}
   end;
-resource_exists_internal(Req, State = #{module := Module}) ->
+resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
   Log = {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   lager:debug("end resource_exists = ~p~n", [Log]),
