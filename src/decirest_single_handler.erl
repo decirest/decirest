@@ -1,25 +1,79 @@
 -module(decirest_single_handler).
 -export([
   init/2,
-  content_types_provided/2,
-  to_fun/2,
-  to_html/2,
-  to_json/2,
-  resource_exists/2
+  is_authorized/2, is_authorized_default/2,
+  forbidden/2, forbidden_default/2,
+  allowed_methods/2, allowed_methods_default/2,
+  content_types_accepted/2, content_types_accepted_default/2,
+  from_fun/2, from_fun_default/2,
+  content_types_provided/2, content_types_provided_default/2,
+  to_fun/2, to_fun_default/2,
+  to_html/2, to_html_default/2,
+  to_json/2, to_json_default/2,
+  resource_exists/2, resource_exists_default/2
 ]).
 
 init(Req, State) ->
   lager:info("single init ~p", [Req]),
   {cowboy_rest, Req, State#{rstate => #{}}}.
 
+is_authorized(Req, State)
+allowed_methods(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2).
+
+allowed_methods_default(Req, State = #{module := Module}) ->
+  Methods = case erlang:function_exported(Module, validate_payload, 2) of
+              true ->
+                [<<"PUT">>];
+              false ->
+                []
+            end,
+  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+
+content_types_accepted(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, content_types_accepted, Req, State, fun content_types_accepted_default/2).
+
+content_types_accepted_default(Req, State) ->
+  lager:critical("here I am"),
+  {[
+    {{<<"application">>, <<"json">>, []}, from_fun},
+    {{<<"application">>, <<"javascript">>, []}, from_fun}
+  ], Req, State}.
+
+from_fun(Req, State = #{module := Module}) ->
+  lager:critical("form fun single"),
+  decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
+
+from_fun_default(Req0, State = #{module := Module}) ->
+  % gate 2 here
+  {ok, Body, Req} = cowboy_req:read_body(Req0),
+  case Module:validate_payload(Body, State) of
+    {ok, Payload} ->
+      % gate3 auth here
+      case Module:persist_data(Payload, State) of
+        {ok, NewState} ->
+          {true, Req, NewState};
+        {error, State} ->
+          ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
+          {stop, ReqNew, State}
+      end;
+    {error, Errors} ->
+      lager:critical("errors ~p", [Errors]),
+      RespBody = jsx:encode(Errors),
+      ReqNew = cowboy_req:set_resp_body(RespBody, Req),
+      {false, ReqNew, State}
+  end.
+
 content_types_provided(Req, State = #{module := Module}) ->
-  Default = [
+  decirest:do_callback(Module, content_types_provided, Req, State, fun content_types_provided_default/2).
+
+content_types_provided_default(Req, State) ->
+  {[
     {{<<"text">>, <<"html">>, '*'}, to_html},
     {{<<"application">>, <<"json">>, '*'}, to_json},
     {{<<"application">>, <<"javascript">>, '*'}, to_json},
     {{<<"application">>, <<"octet-stream">>, '*'}, to_fun}
-  ],
-  decirest:do_callback(Module, content_types_provided,Req, State, Default).
+  ], Req, State}.
 
 to_fun(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_fun, Req, State, fun to_fun_default/2).

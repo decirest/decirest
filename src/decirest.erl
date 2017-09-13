@@ -123,8 +123,9 @@ call_mro(Callback, Req, State) ->
 call_mro(Callback, Req, State, Default) ->
   call_mro(Callback, Req, State, Default, fun(_) -> true end).
 
-call_mro(Callback, Req, State = #{mro := MRO}, Default, Continue) ->
-  call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}).
+call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, Continue) ->
+  {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}),
+  {Res, NewReq, NewState#{mro_call => false, module => Module}}.
 
 call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
   {ModRes, Req, State} = CallbackRes = do_callback(Handler, Callback, Req0, State0#{module => Mod}, Default),
@@ -136,13 +137,16 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
       {Res, Req, State}
   end;
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
-  {Res, Req, State#{mro_call => false}}.
+  {Res, Req, State}.
 
 do_callback(Mod, Callback, Req, State, Default) ->
+  lager:debug("do callback ~p", [Callback]),
   case erlang:function_exported(Mod, Callback, 2) of
     true ->
+      lager:debug("Executing Module ~p:s callback", [Mod]),
       Mod:Callback(Req, State);
     false ->
+      lager:debug("Executing default callback"),
       case is_function(Default) of
         true ->
           % TODO: we don't send Mod, the more specified MRO in state should be enough
