@@ -32,17 +32,17 @@ authenticate(Req, State = #{module := Module, decirest_auth_module := AuthModule
 authenticate(Req, State) ->
   {true, Req, State}.
 
-gate1(Req, State = #{module := Module, decirest_auth_module := Module}) ->
-  decirest:apply_with_default(Module, gate1, [Req, State], {true, Req, State});
+gate1(Req, State = #{module := Module, decirest_auth_module := Module, decirest_auth_module := AuthModule}) ->
+  decirest:apply_with_default(Module, gate1, [Req, State], fun AuthModule:gate1/2);
 gate1(Req, State) ->
   {true, Req, State}.
 
-gate2(Req, State = #{decirest_auth_module := Module}) ->
-  decirest:apply_with_default(Module, gate2, [Req, State], {true, Req, State});
+gate2(Req, State = #{decirest_auth_module := Module, decirest_auth_module := AuthModule}) ->
+  decirest:apply_with_default(Module, gate2, [Req, State], fun AuthModule:gate2/2);
 gate2(Req, State) ->
   {true, Req, State}.
 
-gate3(Req, State = #{decirest_auth_module := Module}) ->
-  decirest:apply_with_default(Module, gate3, [Req, State], {true, Req, State});
+gate3(Req, State = #{decirest_auth_module := Module, decirest_auth_module := AuthModule}) ->
+  decirest:apply_with_default(Module, gate3, [Req, State], fun AuthModule:gate3/2);
 gate3(Req, State) ->
   {true, Req, State}.

@@ -1,8 +1,8 @@
 -module(decirest_collection_handler).
 -export([
   init/2,
-  is_authorized/2,
-  forbidden/2,
+  is_authorized/2, is_authorized_default/2,
+  forbidden/2, forbidden_default/2,
   content_types_provided/2,
   to_fun/2, to_fun_default/2,
   to_html/2, to_html_default/2,
@@ -14,11 +14,22 @@ init(Req, State) ->
   lager:info("collection init ~p", [Req]),
   {cowboy_rest, Req, State#{rstate => #{}}}.
 
-is_authorized(Req, State) ->
+is_authorized(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, is_authorized, Req, State, fun is_authorized_default/2).
+
+is_authorized_default(Req, State) ->
   decirest_auth:is_authorized(Req, State).
 
-forbidden(Req, State) ->
-  decirest_auth:forbidden(Req, State).
+forbidden(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, forbidden, Req, State, fun forbidden_default/2).
+
+forbidden_default(Req, State = #{mro_call := true}) ->
+  decirest_auth:forbidden(Req, State);
+forbidden_default(Req, State = #{module := Module}) ->
+  Continue = fun({false, _, _}) -> true; (_) -> false end,
+  Log = {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
+  lager:debug("end forbidden = ~p~n", [Log]),
+  {maps:get(Module, Res, true), ReqNew, StateNew}.
 
 content_types_provided(Req, State = #{module := Module}) ->
   Default = [

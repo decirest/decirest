@@ -17,7 +17,23 @@ init(Req, State) ->
   lager:info("single init ~p", [Req]),
   {cowboy_rest, Req, State#{rstate => #{}}}.
 
-is_authorized(Req, State)
+is_authorized(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, is_authorized, Req, State, fun is_authorized_default/2).
+
+is_authorized_default(Req, State) ->
+  decirest_auth:is_authorized(Req, State).
+
+forbidden(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, forbidden, Req, State, fun forbidden_default/2).
+
+forbidden_default(Req, State = #{mro_call := true}) ->
+  decirest_auth:forbidden(Req, State);
+forbidden_default(Req, State = #{module := Module}) ->
+  Continue = fun({false, _, _}) -> true; (_) -> false end,
+  Log = {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
+  lager:debug("end forbidden = ~p~n", [Log]),
+  {maps:get(Module, Res, true), ReqNew, StateNew}.
+
 allowed_methods(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2).
 
