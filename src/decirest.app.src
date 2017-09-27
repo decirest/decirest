@@ -1,0 +1,9 @@
+{application, 'decirest', [
+	{description, "Thin layer above cowboy for creating big REST apis"},
+	{vsn, "0.1.0"},
+	{modules, ['decirest','decirest_app','decirest_auth','decirest_collection_handler','decirest_router','decirest_single_handler','decirest_sup','decirest_validator','std_response_html_dtl']},
+	{registered, [decirest_sup]},
+	{applications, [kernel,stdlib,cowboy,jsx,jesse,erlydtl,lager]},
+	{mod, {decirest_app, []}},
+	{env, []}
+]}.
