@@ -1,0 +1,87 @@
+<html>
+<head>
+    <title>{{ title | default:"foo" }} - DeciREST</title>
+    <style>
+        /* Style the list */
+        ul.breadcrumb {
+            padding: 10px 16px;
+            list-style: none;
+            background-color: #eee;
+            font-size: 17px;
+        }
+
+        /* Display list items side by side */
+        ul.breadcrumb li {
+            display: inline;
+        }
+
+        /* Add a slash symbol (/) before/behind each list item */
+        ul.breadcrumb li+li:before {
+            padding: 8px;
+            color: black;
+            content: "/\00a0";
+        }
+
+        /* Add a color to all links inside the list */
+        ul.breadcrumb li a {
+            color: #0275d8;
+            text-decoration: none;
+        }
+
+        /* Add a color on mouse-over */
+        ul.breadcrumb li a:hover {
+            color: #01447e;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <div id="nav"><breadcrumb-component v-bind:paths="paths"></breadcrumb-component></div>
+</nav>
+<section class="data">
+    <h1>Data: {{ title }}</h1>
+    <div id="data_container">
+        {% if collection_data %}
+        <decirest-collection-component v-bind:collection="collection" v-bind:pk="pk"></decirest-collection-component>
+        {% elif single_data %}
+        <decirest-single-component v-bind:single="single" v-bind:pk="pk"></decirest-single-component>
+        {% endif %}
+    </div>
+</section>
+<section class="headers">
+    <h1>Headers</h1>
+    <div id="header_container"></div>
+</section>
+<section class="raw">
+    <h1>Raw data</h1>
+    <div id="raw_container">
+        {% if collection_data %}
+        {{ collection_data }}
+        {% elif single_data %}
+        {{ single_data }}
+        {% endif %}
+    </div>
+</section>
+
+<script type="text/javascript" charset="utf-8">
+{% autoescape off %}
+    window.decirest_data_pk = "{{ data_pk }}";
+    window.decirest_collection_data = {{ collection_data | default:null}};
+    window.decirest_single_data = {{ single_data | default:null}};
+{% endautoescape %}
+</script>
+<script src="https://unpkg.com/vue"></script>
+<script src="/assets/js/decirest.js"></script>
+<script type="text/javascript" charset="utf-8">
+    function collection() {
+        var app = new Vue({
+            el: '#data',
+            data: {
+                data: window.decirest_collection_data,
+            }
+        })
+    }
+</script>
+</body>
+</html>
