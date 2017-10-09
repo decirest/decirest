@@ -38,8 +38,9 @@ allowed_methods(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2).
 
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods = case erlang:function_exported(Module, validate_payload, 2) of
-              true ->
+  Methods = case erlang:function_exported(Module, validate_payload, 3) or
+                 erlang:function_exported(Module, validate_payload, 2) of
+              true->
                 [<<"PUT">>];
               false ->
                 []
@@ -63,7 +64,7 @@ from_fun(Req, State = #{module := Module}) ->
 from_fun_default(Req0, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
-  case Module:validate_payload(Body, State) of
+  case validate_payload(Body, Req, state) of
     {ok, Payload} ->
       % gate3 auth here
       case Module:persist_data(Payload, State) of
@@ -78,6 +79,14 @@ from_fun_default(Req0, State = #{module := Module}) ->
       RespBody = jsx:encode(Errors),
       ReqNew = cowboy_req:set_resp_body(RespBody, Req),
       {false, ReqNew, State}
+  end.
+
+validate_payload(Body, Req, State = #{module := Module}) ->
+  case erlang:function_exported(Module, validate_payload, 3) of 
+    true ->
+      Module:validate_payload(Body, cowboy_req:headers(Req), State);
+    false ->
+      Module:validate_payload(Body, State)
   end.
 
 content_types_provided(Req, State = #{module := Module}) ->
