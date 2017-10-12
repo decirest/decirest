@@ -84,7 +84,7 @@ from_fun_default(Req0, State = #{module := Module}) ->
 validate_payload(Body, Req, State = #{module := Module}) ->
   case erlang:function_exported(Module, validate_payload, 3) of 
     true ->
-      Module:validate_payload(Body, cowboy_req:headers(Req), State);
+      Module:validate_payload(Body, Req, State);
     false ->
       Module:validate_payload(Body, State)
   end.
