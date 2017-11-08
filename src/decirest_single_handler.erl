@@ -72,6 +72,9 @@ from_fun_default(Req0, State = #{module := Module}) ->
           {true, Req, NewState};
         {error, State} ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
+          {stop, ReqNew, State};
+        {StatusCode, State} when is_number(StatusCode) ->
+          ReqNew = cowboy_req:reply(StatusCode, Req),
           {stop, ReqNew, State}
       end;
     {error, Errors} ->
