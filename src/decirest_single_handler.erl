@@ -64,7 +64,8 @@ from_fun(Req, State = #{module := Module}) ->
 from_fun_default(Req0, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
-  case validate_payload(Body, Req, State) of
+  MB = cowboy_req:binding(Module:ident(), Req),
+  case validate_payload(Body, Req, State#{module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
       case Module:persist_data(Payload, State) of

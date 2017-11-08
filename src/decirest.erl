@@ -5,6 +5,7 @@
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
+  module_pk/1,
   do_callback/5,
   apply_with_default/4,
   pretty_path/1,
@@ -138,6 +139,14 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
   end;
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
   {Res, Req, State}.
+
+module_pk(Module) ->
+  case erlang:function_exported(Module, data_pk, 0) of
+    true ->
+      Module:data_pk();
+    false ->
+      id
+  end.
 
 do_callback(Mod, Callback, Req, State, Default) ->
   lager:debug("do callback ~p", [Callback]),

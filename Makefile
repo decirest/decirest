@@ -1,16 +1,40 @@
-PROJECT = decirest
-PROJECT_DESCRIPTION = Thin layer above cowboy for creating big REST apis
-PROJECT_VERSION = 0.1.0
+REBAR3_URL=https://s3.amazonaws.com/rebar3/rebar3
 
-DEPS = cowboy jsx jesse erlydtl lager
-dep_cowboy = git git@github.com:ninenines/cowboy.git 2.0.0-pre.8
-SP = 2
+ifeq ($(wildcard rebar3),rebar3)
+REBAR3 = $(CURDIR)/rebar3
+endif
 
-include erlang.mk
+REBAR3 ?= $(shell test -e `which rebar3` 2>/dev/null && which rebar3 || echo "./rebar3")
 
-# Compile flags
-ERLC_COMPILE_OPTS= +'{parse_transform, lager_transform}'
+ifeq ($(REBAR3),)
+REBAR3 = $(CURDIR)/rebar3
+endif
 
-# Append these settings
-ERLC_OPTS += $(ERLC_COMPILE_OPTS)
-TEST_ERLC_OPTS += $(ERLC_COMPILE_OPTS)
+.PHONY: deps test build
+
+all: build test
+
+build: $(REBAR3)
+	@$(REBAR3) compile
+
+$(REBAR3):
+	wget $(REBAR3_URL) || curl -Lo rebar3 $(REBAR3_URL)
+	@chmod a+x rebar3
+
+deps:
+	@$(REBAR3) get-deps
+
+clean:
+	@$(REBAR3) clean
+
+distclean: clean
+	@$(REBAR3) delete-deps
+
+test:
+	./rebar3 do eunit, cover
+
+release:
+	@$(REBAR3) release
+
+shell:
+	@$(REBAR3) shell
