@@ -75,6 +75,9 @@ from_fun_default(Req0, State = #{module := Module}) ->
           {stop, ReqNew, State};
         {StatusCode, State} when is_number(StatusCode) ->
           ReqNew = cowboy_req:reply(StatusCode, Req),
+          {stop, ReqNew, State};
+        {StatusCode, Body, State} when is_number(StatusCode) ->
+          ReqNew = cowboy_req:reply(StatusCode, #{}, Body, Req),
           {stop, ReqNew, State}
       end;
     {error, Errors} ->
