@@ -31,7 +31,7 @@ distclean: clean
 	@$(REBAR3) delete-deps
 
 test:
-	./rebar3 do eunit, cover
+	@$(REBAR3) do eunit, cover
 
 release:
 	@$(REBAR3) release

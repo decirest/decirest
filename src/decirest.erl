@@ -18,15 +18,18 @@
 
 -endif.
 
+-spec build_routes(atom() | [atom()]) -> [{_,_,map()}].
 build_routes(Mod) ->
   build_routes(Mod, decirest_handler).
 
+-spec build_routes(atom() | [atom()],_) -> [{_,_,map()}].
 build_routes(Mod, Handler) when is_atom(Mod)->
   %lists:flatten(build_routes_path(Mod:paths(), Handler, Mod));
   build_routes([Mod], Handler, child_fun_factory([Mod]), []);
 build_routes(Modules, Handler) ->
   build_routes(Modules, Handler, child_fun_factory(Modules), []).
 
+-spec build_routes([atom()],_,fun((_) -> [any()]),[[[any()] | {_,_,_}]]) -> [{_,_,map()}].
 build_routes([Mod | Modules], Handler, ChildFun, Res) ->
   MRes = build_routes_path(Mod:paths(), Handler, Mod),
   build_routes(Modules, Handler, ChildFun, [MRes | Res]);
@@ -34,6 +37,7 @@ build_routes([], _Handler, ChildFun, Res) ->
   Routes = lists:flatten(Res),
   [{P, H, S#{children => ChildFun(M)}} || {P, H, S = #{module := M}} <- Routes].
 
+-spec build_routes_with_state(_,_,#{'module':=_, 'mro':=[any()], _=>_}) -> [{_,_,_}].
 build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) ->
   case sets:is_element(Mod, sets:from_list(MRO)) of
     true ->
@@ -42,11 +46,13 @@ build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) 
       lists:flatten(build_routes_path(Mod:paths(), Handler, State#{mro => [Mod | MRO], module => Mod}))
   end.
 
+-spec build_routes_path([any()],_,atom() | #{'module':=atom(), 'mro':=[any(),...], _=>_}) -> [[{_,_,_}] | {_,_,map()}].
 build_routes_path(Paths, Handler, Mod) when is_atom(Mod) ->
   build_routes_path(Paths, Handler, #{mro => [Mod] , module => Mod}, []);
 build_routes_path(Paths, Handler, State) when is_map(State) ->
   build_routes_path(Paths, Handler, State, []).
 
+-spec build_routes_path([any()],_,_,[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
 build_routes_path([Path | Paths], Handler, State = #{module := Mod}, Res0) ->
   io:format("br paths ~p, ~p~n", [Path, State]),
   case Mod:child_of() of
@@ -59,15 +65,18 @@ build_routes_path([Path | Paths], Handler, State = #{module := Mod}, Res0) ->
 build_routes_path([], _Handler, _State, Res) ->
   Res.
 
+-spec build_routes_parent([any()],{_,_,#{'module':=_, _=>_}},[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
 build_routes_parent([Parent | Parents], Cfg = {_, Handler, State}, Res) ->
   io:format("br parent, ~p, ~p~n", [Parent, Cfg]),
   build_routes_parent(Parents, Cfg, [merge_routes(build_routes_with_state(Parent, Handler, State), Cfg) | Res]);
 build_routes_parent([], _Cfg, Res) ->
   Res.
 
+-spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}}) -> [{nonempty_maybe_improper_list(),_,map()}].
 merge_routes(ParentRoutes, Cfg) ->
   merge_routes(ParentRoutes, Cfg, []).
 
+-spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}},[{nonempty_maybe_improper_list(),_,map()}]) -> [{nonempty_maybe_improper_list(),_,map()}].
 merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod}}, Res0) ->
   {ParentPath, _, PState} = ParentRoute,
       Res = [{[ParentPath | Path], Handler, PState#{module => Mod}} | Res0],
@@ -75,11 +84,13 @@ merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod
 merge_routes([], _Cfg, Res) ->
   Res.
 
+-spec child_fun_factory([any()]) -> fun((_) -> [any()]).
 child_fun_factory(Resources) ->
   FFun = fun(CR, Acc) -> [[{R, CR} || R <- erlang:apply(CR, child_of, [])] | Acc] end,
   CsList = lists:flatten(lists:foldl(FFun, [], Resources)),
   fun(PR) -> proplists:get_all_values(PR, CsList) end.
 
+-spec child_url(atom(),#{'path':=binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},_) -> binary().
 child_url(Module, #{path := Path}, _State) ->
   ChildPath = case erlang:function_exported(Module, paths, 0) of
                 true ->
@@ -94,9 +105,11 @@ child_url(Module, #{path := Path}, _State) ->
               end,
   pretty_path([Path, "/", ChildPath]).
 
+-spec child_urls_map([atom()],_,_) -> map().
 child_urls_map(Children, Req, State) ->
   child_urls_map(Children, Req, State, #{}).
 
+-spec child_urls_map([atom()],_,_,map()) -> map().
 child_urls_map([Child | Children], Req, State, Map) ->
   case apply_with_default(Child, child_url, [Child, Req, State], fun child_url/3) of
     #{} = Res ->
@@ -108,6 +121,7 @@ child_urls_map([Child | Children], Req, State, Map) ->
 child_urls_map([], _Req, _State, Map) ->
   Map.
 
+-spec pretty_path(binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | [])) -> binary().
 pretty_path(Path) when is_binary(Path) ->
   case binary:replace(Path, <<"//">>, <<"/">>, [global]) of
     Path ->
@@ -118,16 +132,20 @@ pretty_path(Path) when is_binary(Path) ->
 pretty_path(Path) when is_list(Path) ->
   pretty_path(iolist_to_binary(Path)).
 
+-spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_}) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
 call_mro(Callback, Req, State) ->
   call_mro(Callback, Req, State, undefined, fun(_) -> true end).
 
+-spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
 call_mro(Callback, Req, State, Default) ->
   call_mro(Callback, Req, State, Default, fun(_) -> true end).
 
+-spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_,_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
 call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, Continue) ->
   {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}),
   {Res, NewReq, NewState#{mro_call => false, module => Module}}.
 
+-spec call_mro(maybe_improper_list(),_,_,_,_,_,map()) -> {map(),_,_}.
 call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
   {ModRes, Req, State} = CallbackRes = do_callback(Handler, Callback, Req0, State0#{module => Mod}, Default),
   Res = Res0#{Mod => ModRes},
@@ -140,6 +158,7 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
   {Res, Req, State}.
 
+-spec module_pk(atom()) -> any().
 module_pk(Module) ->
   case erlang:function_exported(Module, data_pk, 0) of
     true ->
@@ -148,6 +167,7 @@ module_pk(Module) ->
       id
   end.
 
+-spec do_callback(atom(),atom(),_,_,_) -> any().
 do_callback(Mod, Callback, Req, State, Default) ->
   lager:debug("do callback ~p", [Callback]),
   case erlang:function_exported(Mod, Callback, 2) of
@@ -166,6 +186,7 @@ do_callback(Mod, Callback, Req, State, Default) ->
       end
   end.
 
+-spec apply_with_default(atom(),atom(),[any()],_) -> any().
 apply_with_default(M, F, A, Default) ->
   case erlang:function_exported(M, F, length(A)) of
     true ->
@@ -179,6 +200,7 @@ apply_with_default(M, F, A, Default) ->
       end
   end.
 
+-spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
 t2b(V) when is_list(V) -> list_to_binary(V);
 t2b(V) when is_atom(V) -> atom_to_binary(V, utf8);

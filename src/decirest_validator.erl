@@ -4,9 +4,11 @@
 ]).
 -compile(export_all).
 
+-spec validate_on_schema(_,_) -> {'error',_} | {'ok',_}.
 validate_on_schema(Obj, Schema) ->
   validate_on_schema(Obj, Schema, #{strict => false}). % false during test only
 
+-spec validate_on_schema(_,_,_) -> {'error',_} | {'ok',_}.
 validate_on_schema(Obj, Schema, Options) ->
   case jesse:validate_with_schema(Schema, Obj, [{allowed_errors, infinity}]) of
     {ok, Val} ->
@@ -22,20 +24,24 @@ validate_on_schema(Obj, Schema, Options) ->
   end.
 
 
+-spec drop_extra_properties([[any(),...]],_) -> any().
 drop_extra_properties([Path | Paths], Obj) ->
   drop_extra_properties(Paths, drop_extra_property(Path, Obj));
 drop_extra_properties([], Obj) ->
   Obj.
 
+-spec drop_extra_property([any(),...],map()) -> map().
 drop_extra_property([PathPart | []], Obj) ->
   maps:without([PathPart], Obj);
 drop_extra_property([PathPart | PathParts], Obj) ->
   Obj#{PathPart => drop_extra_property(PathParts, maps:get(PathPart, Obj))}.
 
 
+-spec prettify_errors([{'data_invalid',_,_,_,_}]) -> any().
 prettify_errors(Errors) ->
   prettify_errors(Errors, #{}).
 
+-spec prettify_errors([{'data_invalid',_,_,_,_}],_) -> any().
 prettify_errors([{data_invalid, #{<<"required">> := Required}, missing_required_property, Value, Path} | Errors], ErrorMap) ->
   %P = get_path(Path ++ [Value]),
   %prettify_errors(Errors, ErrorMap#{P => [<<"required">> | maps:get(P, ErrorMap, [])]});
@@ -46,6 +52,7 @@ prettify_errors([{data_invalid, _Schema, ErrorType, Value, Path} | Errors], Erro
 prettify_errors([], ErrorMap) ->
   ErrorMap.
 
+-spec add_required_errors([any()],_,_,_) -> any().
 add_required_errors([R | Required], Value, Path, ErrorMap) ->
   case Value of
     #{R := _} ->
@@ -57,16 +64,19 @@ add_required_errors([R | Required], Value, Path, ErrorMap) ->
 add_required_errors([], _Value, _Path, ErrorMap) ->
   ErrorMap.
 
+-spec get_path([any()]) -> any().
 get_path([PathPart | PathParts]) ->
   get_path(PathParts, PathPart);
 get_path([]) ->
   <<"root">>.
 
+-spec get_path([atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()],_) -> any().
 get_path([PathPart | PathParts], Res) ->
   get_path(PathParts, <<Res/binary, "__", (t2b(PathPart))/binary>>);
 get_path([], Res) ->
   Res.
 
+-spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
 t2b(V) when is_list(V) -> list_to_binary(V);
 t2b(V) when is_atom(V) -> atom_to_binary(V, utf8);

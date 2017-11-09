@@ -4,6 +4,7 @@
   get_paths/2
 ]).
 
+-spec get_paths(atom(),map()) -> [{_,_,map()}].
 get_paths(Module, Options) ->
   case erlang:function_exported(Module, paths, 0) of
     true ->
@@ -12,6 +13,7 @@ get_paths(Module, Options) ->
       prep_paths(make_paths(Module, Options), Options#{pp_mod => Module})
   end.
 
+-spec make_paths(atom(),map()) -> [{[any(),...],_,map()},...].
 make_paths(Module, #{single_handler := SH, collection_handler := CH}) ->
   Name = Module:name(),
   Ident = atom_to_list(Module:ident()),
@@ -21,9 +23,11 @@ make_paths(Module, Options) ->
   CH = maps:get(collection_handler, Options, decirest_collection_handler),
   make_paths(Module, Options#{single_handler => SH, collection_handler => CH}).
 
+-spec prep_paths([{_,_} | {_,_,map()}],#{'pp_mod':=atom(), _=>_}) -> [{_,_,map()}].
 prep_paths(Paths, Options) ->
   prep_paths(Paths, Options, []).
 
+-spec prep_paths([{_,_} | {_,_,map()}],#{'pp_mod':=atom(), _=>_},[{_,_,map()}]) -> [{_,_,map()}].
 prep_paths([PathDef | Paths], Options = #{pp_mod := Module, state := State}, Res) ->
   {Path, Handler, PState} = case PathDef of
                           {P, H, S} ->
@@ -37,9 +41,11 @@ prep_paths([], _Options, Res) ->
   Res.
 
 
+-spec build_routes(_) -> [{'_',[],[any()]},...].
 build_routes(Modules) ->
   build_routes(Modules, #{}).
 
+-spec build_routes(_,map()) -> [{'_',[],[any()]},...].
 build_routes(Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ChildFun = decirest:child_fun_factory(Modules),
@@ -49,6 +55,7 @@ build_routes(Module, Options) ->
   ChildFun = decirest:child_fun_factory([Module]),
   build_routes([Module], Options#{state => State#{child_fun => ChildFun}}, []).
 
+-spec build_routes([any()],#{'state':=#{'child_fun':=fun((_) -> any()), _=>_}, _=>_},[any()]) -> [{'_',[],[any()]},...].
 build_routes([Module | Modules], Options, Res) ->
   build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
 build_routes([], #{nostatic := true}, Res) ->
@@ -56,6 +63,7 @@ build_routes([], #{nostatic := true}, Res) ->
 build_routes([], _Options, Res) ->
   [{'_', [], lists:flatten([{"/assets/[...]", cowboy_static, {priv_dir, decirest, "static/assets"}} | Res])}].
 
+-spec build_module_routes(_,#{'state':=map(), _=>_}) -> any().
 build_module_routes(Module, Options) ->
   Modules = maps:get(modules, Options, []),
   State = maps:get(state, Options, #{}),
@@ -72,6 +80,7 @@ build_module_routes(Module, Options) ->
   end.
 
 
+-spec br(atom(),#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_}) -> [[{_,_,_}] | {_,_,map()}].
 br(Module, Options) ->
 Paths = get_paths(Module, Options),
   case Module:child_of() of
@@ -81,12 +90,14 @@ Paths = get_paths(Module, Options),
       merge_with_parents(Parents, Paths, Options, [])
   end.
 
+-spec merge_with_parents([any()],[{_,_,map()}],#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_},[[{_,_,_}]]) -> [[{_,_,_}]].
 merge_with_parents([Parent | Parents], Paths, Options, Res) ->
   ParentRoutes = lists:flatten(build_module_routes(Parent, Options#{imaparent => true})),
   merge_with_parents(Parents, Paths, Options, merge_with_parent(ParentRoutes, Paths, Res));
 merge_with_parents([], _Paths, _Options, Res) ->
   Res.
 
+-spec merge_with_parent([{_,_,[any()] | map()}],[{_,_,map()}],[[{_,_,_}]]) -> [[{_,_,_}]].
 merge_with_parent([{_Path, _Handler, #{children := false}} | ParentPaths], Paths, Res) ->
   merge_with_parent(ParentPaths, Paths, Res);
 merge_with_parent([{Path, _Handler, #{} = PState} | ParentPaths], Paths, Res) ->
@@ -98,6 +109,7 @@ merge_with_parent([{'_', _, ParentPaths} | Routes], Paths, Res) ->
 merge_with_parent([], _Paths, Res) ->
   Res.
 
+-spec state_merge(#{'mro':=[any()], _=>_},#{'mro':=_, _=>_}) -> #{'mro':=_, _=>_}.
 state_merge(ParentState = #{mro := PMRO}, ModuleState = #{mro := MMRO}) ->
   State = maps:merge(ParentState, ModuleState),
   State#{mro => PMRO ++ MMRO}.
