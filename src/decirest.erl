@@ -5,6 +5,7 @@
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
+  is_ansestor/2,
   module_pk/1,
   do_callback/5,
   apply_with_default/4,
@@ -98,12 +99,17 @@ child_urls_map(Children, Req, State) ->
   child_urls_map(Children, Req, State, #{}).
 
 child_urls_map([Child | Children], Req, State, Map) ->
-  case apply_with_default(Child, child_url, [Child, Req, State], fun child_url/3) of
-    #{} = Res ->
-      child_urls_map(Children, Req, State, maps:merge(Map, Res));
-    Url ->
-      Key = << (Child:name())/binary, "_url">>,
-      child_urls_map(Children, Req, State, Map#{Key => Url})
+  case do_callback(Child, forbidden, Req, State, false) of
+    {false, _, _} ->
+      case apply_with_default(Child, child_url, [Child, Req, State], fun child_url/3) of
+        #{} = Res ->
+          child_urls_map(Children, Req, State, maps:merge(Map, Res));
+        Url ->
+          Key = << (Child:name())/binary, "_url">>,
+          child_urls_map(Children, Req, State, Map#{Key => Url})
+      end;
+    {true, _, _} ->
+      child_urls_map(Children, Req, State, Map)
   end;
 child_urls_map([], _Req, _State, Map) ->
   Map.
@@ -139,6 +145,14 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
   end;
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
   {Res, Req, State}.
+
+is_ansestor(Module, #{mro := MRO}) ->
+  case [true || {_, M} <- MRO, M == Module] of
+    [] ->
+      false;
+    [_ | _] ->
+      true
+  end.
 
 module_pk(Module) ->
   case erlang:function_exported(Module, data_pk, 0) of
