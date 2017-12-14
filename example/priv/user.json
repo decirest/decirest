@@ -1,0 +1,14 @@
+{
+  "id": "http://schema.decirest.com/schema/account.json",
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "the test project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "first_name", "last_name", "email"],
+  "properties": {
+    "id": {"type": "integer", "minimum": 0},
+    "first_name": {"type": "string", "max_length": 64},
+    "last_name": {"type": "string", "max_length": 64},
+    "email": {"type": "string", "format": "email"}
+  }
+}
