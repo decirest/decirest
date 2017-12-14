@@ -10,12 +10,13 @@
   to_fun/2, to_fun_default/2,
   to_html/2, to_html_default/2,
   to_json/2, to_json_default/2,
+  delete_resource/2, delete_resource_default/2,
   resource_exists/2, resource_exists_default/2
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
 init(Req, State) ->
-  lager:info("single init ~p", [Req]),
+  lager:info("single init {~p, ~p}", [Req, State]),
   {cowboy_rest, Req, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
@@ -35,8 +36,7 @@ forbidden_default(Req, State = #{mro_call := true}) ->
   decirest_auth:forbidden(Req, State);
 forbidden_default(Req, State = #{module := Module}) ->
   Continue = fun({false, _, _}) -> true; (_) -> false end,
-  Log = {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
-  lager:debug("end forbidden = ~p~n", [Log]),
+  {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
   {maps:get(Module, Res, true), ReqNew, StateNew}.
 
 -spec allowed_methods(_,#{'module':=atom(), _=>_}) -> any().
@@ -45,12 +45,19 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods = case erlang:function_exported(Module, validate_payload, 3) or
-                 erlang:function_exported(Module, validate_payload, 2) of
-              true->
-                [<<"PUT">>];
+  Methods0 = case erlang:function_exported(Module, validate_payload, 3) or
+    erlang:function_exported(Module, validate_payload, 2) of
+               true->
+                 [<<"PUT">>, <<"PATCH">>];
+               false ->
+                 []
+             end,
+  lager:critical("~n~n~p~n~n", [{erlang:function_exported(Module, delete_data, 2), Module}]),
+  Methods = case erlang:function_exported(Module, delete_data, 2) of
+              true ->
+                [<<"DELETE">> | Methods0];
               false ->
-                []
+                Methods0
             end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
 
@@ -60,7 +67,6 @@ content_types_accepted(Req, State = #{module := Module}) ->
 
 -spec content_types_accepted_default(_,_) -> {[{{_,_,_},'from_fun'},...],_,_}.
 content_types_accepted_default(Req, State) ->
-  lager:critical("here I am"),
   {[
     {{<<"application">>, <<"json">>, []}, from_fun},
     {{<<"application">>, <<"javascript">>, []}, from_fun}
@@ -72,11 +78,11 @@ from_fun(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
 
 -spec from_fun_default(map(),#{'module':=atom(), _=>_}) -> {'false',#{'resp_body':=_, _=>_},#{'module':=atom(), _=>_}} | {'stop',map(),#{'module':=atom(), _=>_}} | {'true',map(),_}.
-from_fun_default(Req0, State = #{module := Module}) ->
+from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
   MB = cowboy_req:binding(Module:ident(), Req),
-  case validate_payload(Body, Req, State#{module_binding => MB}) of
+  case validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
       case Module:persist_data(Payload, State) of
@@ -107,6 +113,14 @@ validate_payload(Body, Req, State = #{module := Module}) ->
     false ->
       Module:validate_payload(Body, State)
   end.
+
+-spec delete_resource(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
+delete_resource(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, delete_resource, Req, State, fun delete_resource_default/2).
+
+-spec delete_resource_default(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
+delete_resource_default(Req, State = #{module := Module}) ->
+  Module:delete_data(Req, State).
 
 -spec content_types_provided(_,#{'module':=atom(), _=>_}) -> any().
 content_types_provided(Req, State = #{module := Module}) ->
@@ -160,7 +174,6 @@ resource_exists(Req, State = #{module := Module}) ->
 
 -spec resource_exists_default(_,#{'module':=_, _=>_}) -> any().
 resource_exists_default(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
-  lager:debug("in resource exist single state ~p~n", [State]),
   case Module:fetch_data(cowboy_req:bindings(Req), RState) of
     {ok, [Data]} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
@@ -176,8 +189,7 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
   end;
 resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
-  Log = {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
-  lager:debug("end resource_exists = ~p~n", [Log]),
+  {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
 
 

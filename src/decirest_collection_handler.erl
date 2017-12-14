@@ -3,6 +3,7 @@
   init/2,
   is_authorized/2, is_authorized_default/2,
   forbidden/2, forbidden_default/2,
+  allow_missing_post/2, allow_missing_post_default/2,
   allowed_methods/2, allowed_methods_default/2,
   content_types_accepted/2, content_types_accepted_default/2,
   from_fun/2, from_fun_default/2,
@@ -15,7 +16,7 @@
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
 init(Req, State) ->
-  lager:info("collection init ~p", [Req]),
+  lager:debug("collection init {~p, ~p}", [Req, State]),
   {cowboy_rest, Req, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
@@ -35,9 +36,14 @@ forbidden_default(Req, State = #{mro_call := true}) ->
   decirest_auth:forbidden(Req, State);
 forbidden_default(Req, State = #{module := Module}) ->
   Continue = fun({false, _, _}) -> true; (_) -> false end,
-  Log = {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
-  lager:debug("end forbidden = ~p~n", [Log]),
+  {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
   {maps:get(Module, Res, true), ReqNew, StateNew}.
+
+allow_missing_post(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, allow_missing_post, Req, State, fun allow_missing_post_default/2).
+
+allow_missing_post_default(Req,State) ->
+  {false, Req, State}.
 
 -spec allowed_methods(_,#{'module':=atom(), _=>_}) -> any().
 allowed_methods(Req, State = #{module := Module}) ->
@@ -185,6 +191,5 @@ resource_exists_default(Req, State = #{mro_call := true}) ->
   {true, Req, State};
 resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
-  Log = {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
-  lager:debug("end resource_exists = ~p", [Log]),
+  {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.

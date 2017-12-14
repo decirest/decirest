@@ -184,13 +184,10 @@ module_pk(Module) ->
 
 -spec do_callback(atom(),atom(),_,_,_) -> any().
 do_callback(Mod, Callback, Req, State, Default) ->
-  lager:debug("do callback ~p", [Callback]),
   case erlang:function_exported(Mod, Callback, 2) of
     true ->
-      lager:debug("Executing Module ~p:s callback", [Mod]),
       Mod:Callback(Req, State);
     false ->
-      lager:debug("Executing default callback"),
       case is_function(Default) of
         true ->
           % TODO: we don't send Mod, the more specified MRO in state should be enough
