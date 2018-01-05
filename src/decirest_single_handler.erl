@@ -81,7 +81,12 @@ from_fun(Req, State = #{module := Module}) ->
 from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
-  MB = cowboy_req:binding(Module:ident(), Req),
+  MB = case erlang:function_exported(Module, ident, 0) of
+         true ->
+           cowboy_req:binding(Module:ident(), Req);
+         false ->
+           undefined
+       end,
   case validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
