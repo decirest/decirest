@@ -103,6 +103,8 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
           ReqNew = cowboy_req:reply(StatusCode, #{}, Body, Req),
           {stop, ReqNew, State}
       end;
+    {stop, ReqNew, State} ->
+      {stop, ReqNew, State};
     {error, Errors} ->
       lager:critical("errors ~p", [Errors]),
       RespBody = jsx:encode(Errors),
