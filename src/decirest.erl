@@ -1,7 +1,10 @@
 -module(decirest).
 -export([
-  build_routes/1, build_routes/2,
-  call_mro/3, call_mro/4, call_mro/5,
+  build_routes/1,
+  build_routes/2,
+  call_mro/3,
+  call_mro/4,
+  call_mro/5,
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,

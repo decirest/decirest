@@ -2,7 +2,7 @@
 -export([
   build_routes/1,
   build_routes/2,
-  get_all_routes/0,
+  get_all_active_routes/0,
   get_paths/2
 ]).
 
@@ -51,11 +51,7 @@ build_routes(Modules) ->
 build_routes(Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ChildFun = decirest:child_fun_factory(Modules),
-  build_routes(Modules, Options#{state => State#{child_fun => ChildFun}}, []);
-build_routes(Module, Options) ->
-  State = maps:get(state, Options, #{}),
-  ChildFun = decirest:child_fun_factory([Module]),
-  build_routes([Module], Options#{state => State#{child_fun => ChildFun}}, []).
+  build_routes(Modules, Options#{state => State#{child_fun => ChildFun, modules => Modules}}, []).
 
 -spec build_routes([any()],#{'state':=#{'child_fun':=fun((_) -> any()), _=>_}, _=>_},[any()]) -> [{'_',[],[any()]},...].
 build_routes([Module | Modules], Options, Res) ->
@@ -77,22 +73,30 @@ build_module_routes(Module, Options) ->
         true ->
           Module:get_routes(Options#{state => State#{main_module => Module}});
         false ->
-          br(Module, Options#{state => State#{main_module => Module}, modules => [Module | Modules]})
+          build_route(Module, Options#{state => State#{main_module => Module}, modules => [Module | Modules]})
       end
   end.
 
 
--spec br(atom(),#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_}) -> [[{_,_,_}] | {_,_,map()}].
-br(Module, Options) ->
+-spec build_route(atom(),#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_}) -> [[{_,_,_}] | {_,_,map()}].
+build_route(Module, Options) ->
 Paths = get_paths(Module, Options),
   case Module:child_of() of
     [] ->
       Paths;
     Parents ->
-      merge_with_parents(Parents, Paths, Options, [])
+      Modules = maps:get(modules, Options, []),
+      case Parents -- Modules of
+        [] ->
+          merge_with_parents(Parents, Paths, Options, []);
+        Missing ->
+          lager:error("Parents missing in decirest modules ~w for ~w", [Missing, Module]),
+          exit(missing_parent)
+      end
   end.
 
--spec merge_with_parents([any()],[{_,_,map()}],#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_},[[{_,_,_}]]) -> [[{_,_,_}]].
+-spec merge_with_parents([any()],[{_,_,map()}],#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_},[[{_,_,_}]]) ->
+    [[{_,_,_}]].
 merge_with_parents([Parent | Parents], Paths, Options, Res) ->
   ParentRoutes = lists:flatten(build_module_routes(Parent, Options#{imaparent => true})),
   merge_with_parents(Parents, Paths, Options, merge_with_parent(ParentRoutes, Paths, Res));
@@ -103,7 +107,6 @@ merge_with_parents([], _Paths, _Options, Res) ->
 merge_with_parent([{_Path, _Handler, #{children := false}} | ParentPaths], Paths, Res) ->
   merge_with_parent(ParentPaths, Paths, Res);
 merge_with_parent([{Path, _Handler, #{} = PState} | ParentPaths], Paths, Res) ->
-  %NewPaths = [{[Path | P], H, maps:merge(PState, maps:without([mro], S))} || {P, H, S} <- Paths],
   NewPaths = [{[Path | P], H, state_merge(PState, S)} || {P, H, S} <- Paths],
   merge_with_parent(ParentPaths, Paths, [NewPaths | Res]);
 merge_with_parent([{'_', _, ParentPaths} | Routes], Paths, Res) ->
@@ -116,7 +119,7 @@ state_merge(ParentState = #{mro := PMRO}, ModuleState = #{mro := MMRO}) ->
   State = maps:merge(ParentState, ModuleState),
   State#{mro => PMRO ++ MMRO}.
 
-get_all_routes() ->
+get_all_active_routes() ->
   RanchOptions = ranch:get_protocol_options(inapi),
   Routes = hd(maps:get(dispatch, maps:get(env, RanchOptions))),
   lists:sort([ Route   || {Route, _, _, _}   <- element(3, Routes)]).
