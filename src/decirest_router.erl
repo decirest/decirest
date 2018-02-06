@@ -1,6 +1,8 @@
 -module(decirest_router).
 -export([
-  build_routes/1, build_routes/2,
+  build_routes/1,
+  build_routes/2,
+  get_all_routes/0,
   get_paths/2
 ]).
 
@@ -114,3 +116,7 @@ state_merge(ParentState = #{mro := PMRO}, ModuleState = #{mro := MMRO}) ->
   State = maps:merge(ParentState, ModuleState),
   State#{mro => PMRO ++ MMRO}.
 
+get_all_routes() ->
+  RanchOptions = ranch:get_protocol_options(inapi),
+  Routes = hd(maps:get(dispatch, maps:get(env, RanchOptions))),
+  lists:sort([ Route   || {Route, _, _, _}   <- element(3, Routes)]).
