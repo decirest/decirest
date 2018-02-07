@@ -2,7 +2,7 @@
 -export([
   build_routes/1,
   build_routes/2,
-  get_all_active_routes/0,
+  get_all_active_routes/1,
   get_paths/2
 ]).
 
@@ -51,7 +51,7 @@ build_routes(Modules) ->
 build_routes(Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ChildFun = decirest:child_fun_factory(Modules),
-  build_routes(Modules, Options#{state => State#{child_fun => ChildFun, modules => Modules}}, []).
+  build_routes(Modules, Options#{all_modules => Modules, state => State#{child_fun => ChildFun}}, []).
 
 -spec build_routes([any()],#{'state':=#{'child_fun':=fun((_) -> any()), _=>_}, _=>_},[any()]) -> [{'_',[],[any()]},...].
 build_routes([Module | Modules], Options, Res) ->
@@ -65,7 +65,7 @@ build_routes([], _Options, Res) ->
 build_module_routes(Module, Options) ->
   Modules = maps:get(modules, Options, []),
   State = maps:get(state, Options, #{}),
-  case sets:is_element(Module, sets:from_list(Modules)) of
+  case lists:member(Module, Modules) of
     true ->
       []; % break possible endless recursion if resources are child of each other
     false ->
@@ -80,18 +80,18 @@ build_module_routes(Module, Options) ->
 
 -spec build_route(atom(),#{'modules':=[any(),...], 'state':=#{'main_module':=atom(), _=>_}, _=>_}) -> [[{_,_,_}] | {_,_,map()}].
 build_route(Module, Options) ->
-Paths = get_paths(Module, Options),
+  Paths = get_paths(Module, Options),
   case Module:child_of() of
     [] ->
       Paths;
     Parents ->
-      Modules = maps:get(modules, Options, []),
-      case Parents -- Modules of
+      AllModules = maps:get(all_modules, Options, []),
+      case Parents -- AllModules of
         [] ->
           merge_with_parents(Parents, Paths, Options, []);
         Missing ->
-          lager:error("Parents missing in decirest modules ~w for ~w", [Missing, Module]),
-          exit(missing_parent)
+          lager:info("Parents missing in decirest modules ~w for ~w", [Missing, Module]),
+          merge_with_parents(Parents, Paths, Options, [])
       end
   end.
 
@@ -119,7 +119,7 @@ state_merge(ParentState = #{mro := PMRO}, ModuleState = #{mro := MMRO}) ->
   State = maps:merge(ParentState, ModuleState),
   State#{mro => PMRO ++ MMRO}.
 
-get_all_active_routes() ->
-  RanchOptions = ranch:get_protocol_options(inapi),
+get_all_active_routes(Ref) ->
+  RanchOptions = ranch:get_protocol_options(Ref),
   Routes = hd(maps:get(dispatch, maps:get(env, RanchOptions))),
   lists:sort([ Route   || {Route, _, _, _}   <- element(3, Routes)]).

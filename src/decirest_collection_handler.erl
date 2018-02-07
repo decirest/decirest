@@ -1,17 +1,27 @@
 -module(decirest_collection_handler).
 -export([
   init/2,
-  is_authorized/2, is_authorized_default/2,
-  forbidden/2, forbidden_default/2,
-  allow_missing_post/2, allow_missing_post_default/2,
-  allowed_methods/2, allowed_methods_default/2,
-  content_types_accepted/2, content_types_accepted_default/2,
-  from_fun/2, from_fun_default/2,
+  is_authorized/2,
+  is_authorized_default/2,
+  forbidden/2,
+  forbidden_default/2,
+  allow_missing_post/2,
+  allow_missing_post_default/2,
+  allowed_methods/2,
+  allowed_methods_default/2,
+  content_types_accepted/2,
+  content_types_accepted_default/2,
+  from_fun/2,
+  from_fun_default/2,
   content_types_provided/2,
-  to_fun/2, to_fun_default/2,
-  to_html/2, to_html_default/2,
-  to_json/2, to_json_default/2,
-  resource_exists/2, resource_exists_default/2
+  to_fun/2,
+  to_fun_default/2,
+  to_html/2,
+  to_html_default/2,
+  to_json/2,
+  to_json_default/2,
+  resource_exists/2,
+  resource_exists_default/2
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.

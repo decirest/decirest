@@ -43,8 +43,6 @@ prettify_errors(Errors) ->
 
 -spec prettify_errors([{'data_invalid',_,_,_,_}],_) -> any().
 prettify_errors([{data_invalid, #{<<"required">> := Required}, missing_required_property, Value, Path} | Errors], ErrorMap) ->
-  %P = get_path(Path ++ [Value]),
-  %prettify_errors(Errors, ErrorMap#{P => [<<"required">> | maps:get(P, ErrorMap, [])]});
   prettify_errors(Errors, add_required_errors(Required, Value, Path, ErrorMap));
 prettify_errors([{data_invalid, _Schema, ErrorType, Value, Path} | Errors], ErrorMap) ->
   P = get_path(Path),
