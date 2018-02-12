@@ -49,3 +49,11 @@ deep_missing_params_test() ->
   ExpectedResult = {error, #{<<"obj__f1">> => [required]}},
   Result = decirest_validator:validate_on_schema(#{<<"field2">> => 5, <<"obj">> => #{}}, Schema),
   ?assertEqual(ExpectedResult, Result).
+
+
+validate_values_test() ->
+  Req = #{company => 1},
+  ?assertEqual(ok, decirest_validator:validate_values(Req, #{company => 1})),
+  ?assertEqual(ok, decirest_validator:validate_values(Req, #{company => 1, qqq => 123})),
+  ?assertEqual({error, [{company, 1, 2}]}, decirest_validator:validate_values(Req, #{company => 2})),
+  ?assertEqual({error, [{company,1,2},{id,33,22}]}, decirest_validator:validate_values(Req#{id => 33}, #{company => 2, id=>22})).
