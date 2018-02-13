@@ -1,7 +1,10 @@
 -module(decirest).
 -export([
-  build_routes/1, build_routes/2,
-  call_mro/3, call_mro/4, call_mro/5,
+  build_routes/1,
+  build_routes/2,
+  call_mro/3,
+  call_mro/4,
+  call_mro/5,
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
@@ -25,7 +28,6 @@ build_routes(Mod) ->
 
 -spec build_routes(atom() | [atom()],_) -> [{_,_,map()}].
 build_routes(Mod, Handler) when is_atom(Mod)->
-  %lists:flatten(build_routes_path(Mod:paths(), Handler, Mod));
   build_routes([Mod], Handler, child_fun_factory([Mod]), []);
 build_routes(Modules, Handler) ->
   build_routes(Modules, Handler, child_fun_factory(Modules), []).
@@ -55,7 +57,6 @@ build_routes_path(Paths, Handler, State) when is_map(State) ->
 
 -spec build_routes_path([any()],_,_,[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
 build_routes_path([Path | Paths], Handler, State = #{module := Mod}, Res0) ->
-  io:format("br paths ~p, ~p~n", [Path, State]),
   case Mod:child_of() of
     [] ->
       build_routes_path(Paths, Handler, State, [{Path, Handler, State} | Res0]);
@@ -68,7 +69,6 @@ build_routes_path([], _Handler, _State, Res) ->
 
 -spec build_routes_parent([any()],{_,_,#{'module':=_, _=>_}},[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
 build_routes_parent([Parent | Parents], Cfg = {_, Handler, State}, Res) ->
-  io:format("br parent, ~p, ~p~n", [Parent, Cfg]),
   build_routes_parent(Parents, Cfg, [merge_routes(build_routes_with_state(Parent, Handler, State), Cfg) | Res]);
 build_routes_parent([], _Cfg, Res) ->
   Res.
@@ -77,7 +77,8 @@ build_routes_parent([], _Cfg, Res) ->
 merge_routes(ParentRoutes, Cfg) ->
   merge_routes(ParentRoutes, Cfg, []).
 
--spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}},[{nonempty_maybe_improper_list(),_,map()}]) -> [{nonempty_maybe_improper_list(),_,map()}].
+-spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}},[{nonempty_maybe_improper_list(),_,map()}]) ->
+  [{nonempty_maybe_improper_list(),_,map()}].
 merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod}}, Res0) ->
   {ParentPath, _, PState} = ParentRoute,
       Res = [{[ParentPath | Path], Handler, PState#{module => Mod}} | Res0],
@@ -93,17 +94,18 @@ child_fun_factory(Resources) ->
 
 -spec child_url(atom(),#{'path':=binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},_) -> binary().
 child_url(Module, #{path := Path}, _State) ->
-  ChildPath = case erlang:function_exported(Module, paths, 0) of
-                true ->
-                  case Module:paths() of
-                    [{P, _} | _] ->
-                      P;
-                    [{P, _, _} | _] ->
-                      P
-                  end;
-                false ->
-                  Module:name()
-              end,
+  ChildPath =
+    case erlang:function_exported(Module, paths, 0) of
+      true ->
+        case Module:paths() of
+          [{P, _} | _] ->
+            P;
+          [{P, _, _} | _] ->
+            P
+        end;
+      false ->
+        Module:name()
+    end,
   pretty_path([Path, "/", ChildPath]).
 
 -spec child_urls_map([atom()],_,_) -> map().
@@ -166,12 +168,7 @@ call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
 
 -spec is_ansestor(atom(), map()) -> true | false.
 is_ansestor(Module, #{mro := MRO}) ->
-  case [true || {_, M} <- MRO, M == Module] of
-    [] ->
-      false;
-    [_ | _] ->
-      true
-  end.
+  lists:any(fun({_, M}) -> M == Module end, MRO).
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->
@@ -191,7 +188,6 @@ do_callback(Mod, Callback, Req, State, Default) ->
       case is_function(Default) of
         true ->
           % TODO: we don't send Mod, the more specified MRO in state should be enough
-          % Default(Mod, Req, State);
           Default(Req, State);
         false ->
           {Default, Req, State}
@@ -221,13 +217,16 @@ t2b(V) when is_binary(V) -> V.
 -ifdef(TEST).
 
 child_url_test() ->
+  Path = <<"/api/v1/company/1/">>,
   Req = #{
-    scheme => <<"http">>, host => <<"localhost">>, port => 8080,
-    path => Path = <<"/api/v1/company/1/">>, qs => <<"dummy=2785">>
+    scheme => <<"http">>,
+    host => <<"localhost">>,
+    port => 8080,
+    path => Path,
+    qs => <<"dummy=2785">>
   },
   ChildPath = "user",
-  Path = cowboy_req:uri(Req, #{host => undefined}),
-  <<"/api/v1/company/1/user">> = pretty_path([Path, "/", ChildPath]),
-  ok.
+  ?assert(lists:member(Path, cowboy_req:uri(Req, #{host => undefined}))),
+  ?assertEqual(pretty_path([Path, "/", ChildPath]), <<"/api/v1/company/1/user">>).
 
 -endif.

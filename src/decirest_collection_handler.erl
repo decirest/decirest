@@ -1,17 +1,27 @@
 -module(decirest_collection_handler).
 -export([
   init/2,
-  is_authorized/2, is_authorized_default/2,
-  forbidden/2, forbidden_default/2,
-  allow_missing_post/2, allow_missing_post_default/2,
-  allowed_methods/2, allowed_methods_default/2,
-  content_types_accepted/2, content_types_accepted_default/2,
-  from_fun/2, from_fun_default/2,
+  is_authorized/2,
+  is_authorized_default/2,
+  forbidden/2,
+  forbidden_default/2,
+  allow_missing_post/2,
+  allow_missing_post_default/2,
+  allowed_methods/2,
+  allowed_methods_default/2,
+  content_types_accepted/2,
+  content_types_accepted_default/2,
+  from_fun/2,
+  from_fun_default/2,
   content_types_provided/2,
-  to_fun/2, to_fun_default/2,
-  to_html/2, to_html_default/2,
-  to_json/2, to_json_default/2,
-  resource_exists/2, resource_exists_default/2
+  to_fun/2,
+  to_fun_default/2,
+  to_html/2,
+  to_html_default/2,
+  to_json/2,
+  to_json_default/2,
+  resource_exists/2,
+  resource_exists_default/2
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
@@ -153,24 +163,30 @@ to_html_default(Req, State = #{module := Module}) ->
 to_json(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_json, Req, State, fun to_json_default/2).
 
--spec to_json_default(map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}) -> {binary(),map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}}.
-to_json_default(Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
-  Children = ChildFun(Module),
-  Data0 = case Module:fetch_data(cowboy_req:bindings(Req), RState) of
-            {ok, D} ->
-              D;
-            {error, Msg} ->
-              lager:error("got exception when fetching data ~p", [Msg]),
-              []
-          end,
-  PK = case erlang:function_exported(Module, data_pk, 0) of
-         true ->
-           Module:data_pk();
-         false ->
-           id
-       end,
-  Data = [data_prep(D, PKVal, Children, Req, State) || D = #{PK := PKVal} <- Data0],
+-spec to_json_default(map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}) ->
+  {binary(),map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}}.
+to_json_default(Req, State = #{module := Module, rstate := RState}) ->
+  Data0 =
+    case Module:fetch_data(cowboy_req:bindings(Req), RState) of
+      {ok, D} ->
+        D;
+      {error, Msg} ->
+        lager:error("got exception when fetching data ~p", [Msg]),
+        []
+    end,
+  Data = filter_data_on_pk(Data0, Req, State),
   {jsx:encode(Data, [indent]), Req, State}.
+
+filter_data_on_pk(Data, Req, State = #{child_fun := ChildFun, module := Module}) ->
+  Children = ChildFun(Module),
+  PK =
+    case erlang:function_exported(Module, data_pk, 0) of
+      true ->
+        Module:data_pk();
+      false ->
+        id
+    end,
+  [data_prep(D, PKVal, Children, Req, State) || D = #{PK := PKVal} <- Data].
 
 -spec data_prep(map(),_,_,#{'path'=>binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},#{'child_fun':=_, 'module':=_, 'rstate':=_, _=>_}) -> map().
 data_prep(Data, PK, Children, Req0 = #{path := Path}, State) ->

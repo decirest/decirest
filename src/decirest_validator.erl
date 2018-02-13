@@ -1,8 +1,10 @@
 -module(decirest_validator).
 -export([
-  validate_on_schema/2, validate_on_schema/3
+  validate_on_schema/2,
+  validate_on_schema/3,
+  validate_values/2
 ]).
--compile(export_all).
+
 
 -spec validate_on_schema(_,_) -> {'error',_} | {'ok',_}.
 validate_on_schema(Obj, Schema) ->
@@ -43,8 +45,6 @@ prettify_errors(Errors) ->
 
 -spec prettify_errors([{'data_invalid',_,_,_,_}],_) -> any().
 prettify_errors([{data_invalid, #{<<"required">> := Required}, missing_required_property, Value, Path} | Errors], ErrorMap) ->
-  %P = get_path(Path ++ [Value]),
-  %prettify_errors(Errors, ErrorMap#{P => [<<"required">> | maps:get(P, ErrorMap, [])]});
   prettify_errors(Errors, add_required_errors(Required, Value, Path, ErrorMap));
 prettify_errors([{data_invalid, _Schema, ErrorType, Value, Path} | Errors], ErrorMap) ->
   P = get_path(Path),
@@ -75,6 +75,22 @@ get_path([PathPart | PathParts], Res) ->
   get_path(PathParts, <<Res/binary, "__", (t2b(PathPart))/binary>>);
 get_path([], Res) ->
   Res.
+
+
+validate_values(ReqMap, Map) ->
+  WrongValueList = maps:to_list(ReqMap) -- maps:to_list(Map),
+  case WrongValueList of
+    [] ->
+      ok;
+    _ ->
+      {error, format_faulty_values(WrongValueList, Map)}
+  end.
+
+format_faulty_values(ReqList, Map) ->
+  maps:from_list(lists:map(
+    fun({ReqK, ReqV}) -> {ReqK , #{ req => ReqV, value => maps:get(ReqK, Map)}}
+    end, ReqList)).
+
 
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
