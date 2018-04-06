@@ -165,9 +165,9 @@ to_json(Req, State = #{module := Module}) ->
 
 -spec to_json_default(map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}) ->
   {binary(),map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}}.
-to_json_default(Req, State = #{module := Module, rstate := RState}) ->
+to_json_default(#{qs := Qs} = Req, State = #{module := Module, rstate := RState}) ->
   Data0 =
-    case Module:fetch_data(cowboy_req:bindings(Req), RState) of
+    case Module:fetch_data((cowboy_req:bindings(Req))#{qs => Qs}, RState) of
       {ok, D} ->
         D;
       {error, Msg} ->
