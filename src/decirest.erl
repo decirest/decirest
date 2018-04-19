@@ -168,7 +168,7 @@ call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
 
 -spec is_ansestor(atom(), map()) -> true | false.
 is_ansestor(Module, #{mro := MRO}) ->
-  lists:any(fun({_, M}) -> M == Module end, MRO).
+  lists:keymember(Module, 2, MRO).
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->

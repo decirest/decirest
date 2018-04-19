@@ -5,8 +5,7 @@
   authenticate/2,
   gate1/2,
   gate2/2,
-  gate3/2,
-  parent_present/2
+  gate3/2
 ]).
 
 -spec is_authorized(_,_) -> any().
@@ -50,6 +49,3 @@ gate3(Req, State = #{module := Module, decirest_auth_module := AuthModule}) ->
   decirest:apply_with_default(Module, gate3, [Req, State], fun AuthModule:gate3/2);
 gate3(Req, State) ->
   {true, Req, State}.
-
-parent_present(Parent, State) ->
-  lists:keymember(Parent, 2, maps:get(mro, State)).

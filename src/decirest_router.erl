@@ -123,3 +123,4 @@ get_all_active_routes(Ref) ->
   RanchOptions = ranch:get_protocol_options(Ref),
   Routes = hd(maps:get(dispatch, maps:get(env, RanchOptions))),
   lists:sort([ Route   || {Route, _, _, _}   <- element(3, Routes)]).
+
