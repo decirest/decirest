@@ -25,8 +25,8 @@
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
-init(Req, State = #{module := Module}) ->
-  {cowboy_rest, Req#{bindings => maybe_get_query_bindings(Req, Module)}, State#{rstate => #{}}}.
+init(Req, State) ->
+  {cowboy_rest, Req#{bindings => maybe_get_query_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
 is_authorized(Req, State = #{module := Module}) ->
@@ -209,17 +209,17 @@ resource_exists_default(Req, State = #{module := Module}) ->
   {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
 
-maybe_get_query_bindings(Req, Module) ->
+maybe_get_query_bindings(Req, State) ->
+  QueryMatch = decirest:do_callback(query_bindings, Req, State, []),
   Bindings = cowboy_req:bindings(Req),
-  case erlang:function_exported(Module, query_bindings, 0) of
-    true ->
-      QueryMatch = Module:query_bindings(),
+  case QueryMatch of
+     [] ->
+       Bindings;
+    QueryMatch ->
       QueryBindings = cowboy_req:match_qs(QueryMatch, Req),
       MergedBindings = maps:merge(QueryBindings, Bindings),
       check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
-      MergedBindings;
-    false ->
-      Bindings
+      MergedBindings
   end.
 
 check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings) ->

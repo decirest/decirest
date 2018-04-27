@@ -10,6 +10,7 @@
   child_urls_map/3,
   is_ansestor/2,
   module_pk/1,
+  do_callback/4,
   do_callback/5,
   apply_with_default/4,
   pretty_path/1,
@@ -180,8 +181,11 @@ module_pk(Module) ->
   end.
 
 -spec do_callback(atom(),atom(),_,_,_) -> any().
-do_callback(Mod, Callback, Req, State, Default) ->
-  case erlang:function_exported(Mod, Callback, 2) of
+do_callback(Callback, Req, #{module := Module} = State, Default) ->
+  do_callback(Module, Callback, Req, State, Default).
+
+do_callback(Module, Callback, Req, State, Default) ->
+  case erlang:function_exported(Module, Callback, 2) of
     true ->
       Mod:Callback(Req, State);
     false ->
