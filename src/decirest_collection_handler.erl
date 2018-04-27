@@ -209,17 +209,29 @@ resource_exists_default(Req, State = #{module := Module}) ->
   {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
 
-maybe_get_query_bindings(Req, State) ->
-  QueryMatch = decirest:do_callback(query_bindings, Req, State, []),
+maybe_get_query_bindings(Req, #{module := Module} = State) ->
   Bindings = cowboy_req:bindings(Req),
-  case QueryMatch of
-     [] ->
-       Bindings;
-    QueryMatch ->
+  case erlang:function_exported(Module, query_bindings, 0) of
+     false ->
+       maybe_get_query_matches(Req, State);
+    true ->
+      QueryMatch = Module:query_bindings(),
       QueryBindings = cowboy_req:match_qs(QueryMatch, Req),
       MergedBindings = maps:merge(QueryBindings, Bindings),
       check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
       MergedBindings
+  end.
+
+maybe_get_query_matches(Req, #{module := Module} = State) ->
+  Bindings = cowboy_req:bindings(Req),
+  case erlang:function_exported(Module, get_query_bindings, 2) of
+    true ->
+      QueryBindings = Module:get_query_bindings(Req, State),
+      MergedBindings = maps:merge(QueryBindings, Bindings),
+      check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
+      MergedBindings;
+    false ->
+      Bindings
   end.
 
 check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings) ->
