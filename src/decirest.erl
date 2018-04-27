@@ -187,7 +187,7 @@ do_callback(Callback, Req, #{module := Module} = State, Default) ->
 do_callback(Module, Callback, Req, State, Default) ->
   case erlang:function_exported(Module, Callback, 2) of
     true ->
-      Mod:Callback(Req, State);
+      Module:Callback(Req, State);
     false ->
       case is_function(Default) of
         true ->
