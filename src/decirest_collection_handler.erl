@@ -26,7 +26,7 @@
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
 init(Req, State) ->
-  {cowboy_rest, Req#{bindings => maybe_get_query_bindings(Req, State)}, State#{rstate => #{}}}.
+  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
 is_authorized(Req, State = #{module := Module}) ->
@@ -208,39 +208,3 @@ resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
   {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
-
-maybe_get_query_bindings(Req, #{module := Module} = State) ->
-  Bindings = cowboy_req:bindings(Req),
-  case erlang:function_exported(Module, query_bindings, 0) of
-     false ->
-       maybe_get_query_matches(Req, State);
-    true ->
-      QueryMatch = Module:query_bindings(),
-      QueryBindings = cowboy_req:match_qs(QueryMatch, Req),
-      MergedBindings = maps:merge(QueryBindings, Bindings),
-      check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
-      MergedBindings
-  end.
-
-maybe_get_query_matches(Req, #{module := Module} = State) ->
-  Bindings = cowboy_req:bindings(Req),
-  case erlang:function_exported(Module, get_query_bindings, 2) of
-    true ->
-      QueryBindings = Module:get_query_bindings(Req, State),
-      MergedBindings = maps:merge(QueryBindings, Bindings),
-      check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
-      MergedBindings;
-    false ->
-      Bindings
-  end.
-
-check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings) ->
-  case maps:size(QueryBindings) + maps:size(Bindings) == maps:size(MergedBindings) of
-    true ->
-      ok;
-    false ->
-      QueryBindingsSet = sets:from_list(maps:keys(QueryBindings)),
-      BindingsSet = sets:from_list(maps:keys(Bindings)),
-      DuplicateBindings = sets:to_list(sets:intersection(QueryBindingsSet, BindingsSet)),
-      lager:error("Same binding was used for both url binding and query_bindings: ~p", [DuplicateBindings])
-  end.
