@@ -26,8 +26,7 @@
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
 init(Req, State) ->
-  lager:debug("collection init {~p, ~p}", [Req, State]),
-  {cowboy_rest, Req, State#{rstate => #{}}}.
+  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
 is_authorized(Req, State = #{module := Module}) ->

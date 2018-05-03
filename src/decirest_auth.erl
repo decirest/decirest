@@ -26,7 +26,6 @@ forbidden(Req0, State0) ->
       {true, Req, State}
   end.
 
-
 -spec authenticate(_,_) -> any().
 authenticate(Req, State = #{module := Module, decirest_auth_module := AuthModule}) ->
   decirest:apply_with_default(Module, authenticate, [Req, State], fun AuthModule:authenticate/2);

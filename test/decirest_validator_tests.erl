@@ -55,5 +55,9 @@ validate_values_test() ->
   Req = #{company => 1},
   ?assertEqual(ok, decirest_validator:validate_values(Req, #{company => 1})),
   ?assertEqual(ok, decirest_validator:validate_values(Req, #{company => 1, qqq => 123})),
-  ?assertEqual({error, [{company, 1, 2}]}, decirest_validator:validate_values(Req, #{company => 2})),
-  ?assertEqual({error, [{company,1,2},{id,33,22}]}, decirest_validator:validate_values(Req#{id => 33}, #{company => 2, id=>22})).
+  ?assertEqual({error,#{company => #{req => 1,value => 2}}}, decirest_validator:validate_values(Req, #{company => 2})),
+  ?assertEqual(
+    {error,
+      #{company => #{req => 1,value => 2},
+        id => #{req => 33,value => 22}}},
+    decirest_validator:validate_values(Req#{id => 33}, #{company => 2, id=>22})).

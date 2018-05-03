@@ -10,6 +10,7 @@
   child_urls_map/3,
   is_ansestor/2,
   module_pk/1,
+  do_callback/4,
   do_callback/5,
   apply_with_default/4,
   pretty_path/1,
@@ -168,7 +169,7 @@ call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
 
 -spec is_ansestor(atom(), map()) -> true | false.
 is_ansestor(Module, #{mro := MRO}) ->
-  lists:any(fun({_, M}) -> M == Module end, MRO).
+  lists:keymember(Module, 2, MRO).
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->
@@ -180,10 +181,13 @@ module_pk(Module) ->
   end.
 
 -spec do_callback(atom(),atom(),_,_,_) -> any().
-do_callback(Mod, Callback, Req, State, Default) ->
-  case erlang:function_exported(Mod, Callback, 2) of
+do_callback(Callback, Req, #{module := Module} = State, Default) ->
+  do_callback(Module, Callback, Req, State, Default).
+
+do_callback(Module, Callback, Req, State, Default) ->
+  case erlang:function_exported(Module, Callback, 2) of
     true ->
-      Mod:Callback(Req, State);
+      Module:Callback(Req, State);
     false ->
       case is_function(Default) of
         true ->

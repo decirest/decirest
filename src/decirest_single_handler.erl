@@ -16,8 +16,7 @@
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
 init(Req, State) ->
-  lager:info("single init {~p, ~p}", [Req, State]),
-  {cowboy_rest, Req, State#{rstate => #{}}}.
+  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
 is_authorized(Req, State = #{module := Module}) ->
@@ -103,8 +102,8 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
           ReqNew = cowboy_req:reply(StatusCode, #{}, Body, Req),
           {stop, ReqNew, State}
       end;
-    {stop, ReqNew, State} ->
-      {stop, ReqNew, State};
+    {stop, NewReq, NewState} ->
+      {stop, NewReq, NewState};
     {error, Errors} ->
       lager:critical("errors ~p", [Errors]),
       RespBody = jsx:encode(Errors),

@@ -51,15 +51,23 @@ build_routes(Modules) ->
 build_routes(Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ChildFun = decirest:child_fun_factory(Modules),
-  build_routes(Modules, Options#{all_modules => Modules, state => State#{child_fun => ChildFun}}, []).
+  Hosts = maps:get(hosts, Options, ['_']),
+
+  UpdatedOptions =
+    Options#{
+      hosts => Hosts,
+      all_modules => Modules,
+      state => State#{child_fun => ChildFun}},
+
+  build_routes(Modules, UpdatedOptions, []).
 
 -spec build_routes([any()],#{'state':=#{'child_fun':=fun((_) -> any()), _=>_}, _=>_},[any()]) -> [{'_',[],[any()]},...].
 build_routes([Module | Modules], Options, Res) ->
   build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
-build_routes([], #{nostatic := true}, Res) ->
-  [{'_', [], lists:flatten(Res)}];
-build_routes([], _Options, Res) ->
-  [{'_', [], lists:flatten([{"/assets/[...]", cowboy_static, {priv_dir, decirest, "static/assets"}} | Res])}].
+build_routes([], #{nostatic := true, hosts := Hosts}, Res) ->
+  [{Host, [], lists:flatten(Res)} || Host <- Hosts];
+build_routes([], #{hosts := Hosts}, Res) ->
+  [{Host, [], lists:flatten([{"/assets/[...]", cowboy_static, {priv_dir, decirest, "static/assets"}} | Res])} || Host <- Hosts].
 
 -spec build_module_routes(_,#{'state':=map(), _=>_}) -> any().
 build_module_routes(Module, Options) ->
@@ -123,3 +131,4 @@ get_all_active_routes(Ref) ->
   RanchOptions = ranch:get_protocol_options(Ref),
   Routes = hd(maps:get(dispatch, maps:get(env, RanchOptions))),
   lists:sort([ Route   || {Route, _, _, _}   <- element(3, Routes)]).
+
