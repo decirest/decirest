@@ -98,15 +98,15 @@ from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
         {ok, NewState} ->
           SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(ID)]),
           {{true, SelfUrl}, Req, NewState};
-        {error, State} ->
+        {error, NewState} ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
-          {stop, ReqNew, State};
-        {StatusCode, State} when is_number(StatusCode) ->
+          {stop, ReqNew, NewState};
+        {StatusCode, NewState} when is_number(StatusCode) ->
           ReqNew = cowboy_req:reply(StatusCode, Req),
-          {stop, ReqNew, State};
-        {StatusCode, Body, State} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, #{}, Body, Req),
-          {stop, ReqNew, State}
+          {stop, ReqNew, NewState};
+        {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
+          ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+          {stop, ReqNew, NewState}
       end;
     {error, Errors} ->
       lager:critical("errors ~p", [Errors]),
