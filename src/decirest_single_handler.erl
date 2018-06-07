@@ -92,15 +92,15 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
       case Module:persist_data(Payload, State) of
         {ok, NewState} ->
           {true, Req, NewState};
-        {error, State} ->
+        {error, NewState} ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
-          {stop, ReqNew, State};
-        {StatusCode, State} when is_number(StatusCode) ->
+          {stop, ReqNew, NewState};
+        {StatusCode, NewState} when is_number(StatusCode) ->
           ReqNew = cowboy_req:reply(StatusCode, Req),
-          {stop, ReqNew, State};
-        {StatusCode, Body, State} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, #{}, Body, Req),
-          {stop, ReqNew, State}
+          {stop, ReqNew, NewState};
+        {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
+          ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+          {stop, ReqNew, NewState}
       end;
     {stop, NewReq, NewState} ->
       {stop, NewReq, NewState};

@@ -19,7 +19,6 @@
 
 
 get_bindings(Req, #{module := Module} = State) ->
-  lager:error("Req == :~p  ", [Req]),
   Bindings = cowboy_req:bindings(Req),
   case erlang:function_exported(Module, query_bindings, 0) of
     false ->
