@@ -75,7 +75,6 @@ content_types_accepted(Req, State = #{module := Module}) ->
 
 -spec content_types_accepted_default(_,_) -> {[{{_,_,_},'from_fun'},...],_,_}.
 content_types_accepted_default(Req, State) ->
-  lager:critical("here I am"),
   {[
     {{<<"application">>, <<"json">>, []}, from_fun},
     {{<<"application">>, <<"javascript">>, []}, from_fun}
@@ -83,7 +82,6 @@ content_types_accepted_default(Req, State) ->
 
 -spec from_fun(_,#{'module':=atom(), _=>_}) -> any().
 from_fun(Req, State = #{module := Module}) ->
-  lager:critical("form fun single"),
   decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
 
 -spec from_fun_default(#{'path':=_, _=>_},#{'module':=atom(), _=>_}) -> {'false' | 'stop' | {'true',binary()},map(),_}.
@@ -91,10 +89,10 @@ from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
   PK = decirest:module_pk(Module),
-  case validate_payload(Body, Req, State) of
+  case decirest_handler_lib:validate_payload(Body, Req, State) of
     {ok, Payload = #{PK := ID}} ->
       % gate3 auth here
-      case Module:persist_data(Payload, State) of
+      case decirest_handler_lib:persist_data(Payload, Req, State) of
         {ok, NewState} ->
           SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(ID)]),
           {{true, SelfUrl}, Req, NewState};
@@ -115,14 +113,6 @@ from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
       {false, ReqNew, State}
   end.
 
--spec validate_payload(binary(),map(),#{'module':=atom(), _=>_}) -> any().
-validate_payload(Body, Req, State = #{module := Module}) ->
-  case erlang:function_exported(Module, validate_payload, 3) of
-    true ->
-      Module:validate_payload(Body, Req, State);
-    false ->
-      Module:validate_payload(Body, State)
-  end.
 -spec content_types_provided(_,#{'module':=atom(), _=>_}) -> any().
 content_types_provided(Req, State = #{module := Module}) ->
   Default = [
@@ -164,17 +154,19 @@ to_json(Req, State = #{module := Module}) ->
 
 -spec to_json_default(map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}) ->
   {binary(),map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}}.
-to_json_default(Req, State = #{module := Module, rstate := RState}) ->
-  Data0 =
-    case Module:fetch_data(cowboy_req:bindings(Req), RState) of
-      {ok, D} ->
-        D;
-      {error, Msg} ->
-        lager:error("got exception when fetching data ~p", [Msg]),
-        []
-    end,
+to_json_default(Req, State) ->
+  Data0 = fetch_data(Req, State),
   Data = filter_data_on_pk(Data0, Req, State),
   {jsx:encode(Data, [indent]), Req, State}.
+
+fetch_data(Req, #{module := Module, rstate := RState}) ->
+  case Module:fetch_data(cowboy_req:bindings(Req), RState) of
+    {ok, D} ->
+      D;
+    {error, Msg} ->
+      lager:error("got exception when fetching data ~p", [Msg]),
+      []
+  end.
 
 filter_data_on_pk(Data, Req, State = #{child_fun := ChildFun, module := Module}) ->
   Children = ChildFun(Module),
@@ -185,17 +177,40 @@ filter_data_on_pk(Data, Req, State = #{child_fun := ChildFun, module := Module})
       false ->
         id
     end,
+  lager:debug("filter_data_on_pk ~p", [Data]),
   [data_prep(D, PKVal, Children, Req, State) || D = #{PK := PKVal} <- Data].
 
 -spec data_prep(map(),_,_,#{'path'=>binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},#{'child_fun':=_, 'module':=_, 'rstate':=_, _=>_}) -> map().
-data_prep(Data, PK, Children, Req0 = #{path := Path}, State) ->
-  SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(PK)]),
+data_prep(Data, PKVal, Children, Req0 = #{path := Path}, State) ->
+  SelfUrl = get_self_url(Path, Data, PKVal),
   Req = Req0#{path => SelfUrl},
   ChildUrls = decirest:child_urls_map(Children, Req, State),
-  maps:merge(ChildUrls, Data#{details_url => SelfUrl});
-data_prep(D, _, _, Req, _) ->
+  maps:merge(ChildUrls, maps:remove(self_url, Data#{details_url => SelfUrl}));
+
+data_prep(Data, _, _, Req, _) ->
   lager:error("prep failure, ~p", [Req]),
-  D.
+  Data.
+
+get_self_url(Path, Data, PKVal) ->
+  case maps:get(self_url, Data, undefined) of
+    undefined ->
+      decirest:pretty_path([Path, "/", decirest:t2b(PKVal)]);
+    [{Replace, Add}] ->
+      replace_and_add(Replace, Add, Path);
+    ReplaceAddList ->
+      lists:map(
+        fun({Replace, Add}) ->
+          replace_and_add(Replace, Add, Path)
+        end, ReplaceAddList)
+  end.
+
+replace_and_add(Replace, Add, Path) ->
+  case hd(string:split(Path, Replace)) of
+    [] ->
+      error(wrong_self);
+    SelfBase ->
+      <<SelfBase/binary, Add/binary>>
+  end.
 
 -spec resource_exists(_,#{'module':=atom(), _=>_}) -> any().
 resource_exists(Req, State = #{module := Module}) ->

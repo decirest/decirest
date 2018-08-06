@@ -8,7 +8,7 @@
  {<<"lager">>,{pkg,<<"lager">>,<<"3.6.0">>},0},
  {<<"meck">>,{pkg,<<"meck">>,<<"0.8.9">>},0},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.4.0">>},1},
- {<<"redbug">>,{pkg,<<"redbug">>,<<"1.2.0">>},0}]}.
+ {<<"redbug">>,{pkg,<<"redbug">>,<<"1.2.1">>},0}]}.
 [
 {pkg_hash,[
  {<<"cowboy">>, <<"6CDE634DA1DA8B1D17DD2B20F5F6F91AB8AC7FA1B5106D13DAD63C905AB76004">>},
@@ -20,5 +20,5 @@
  {<<"lager">>, <<"0C5BDB1E5937ECA17D7CAB15DD52AA30B9EB12D48A2D9E774EF6385E48709A98">>},
  {<<"meck">>, <<"64C5C0BD8BCCA3A180B44196265C8ED7594E16BCC845D0698EC6B4E577F48188">>},
  {<<"ranch">>, <<"10272F95DA79340FA7E8774BA7930B901713D272905D0012B06CA6D994F8826B">>},
- {<<"redbug">>, <<"75C09B306471CEE01AC4BDB727C33CA671A48D7AB7ACAF090C557F2E5BC02620">>}]}
+ {<<"redbug">>, <<"9153EE50E42C39CE3F6EFA65EE746F4A52896DA66862CFB59E7C0F838B7B8414">>}]}
 ].

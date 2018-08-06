@@ -44,20 +44,21 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods0 = case erlang:function_exported(Module, validate_payload, 3) or
-    erlang:function_exported(Module, validate_payload, 2) of
-               true->
-                 [<<"PUT">>, <<"PATCH">>];
-               false ->
-                 []
-             end,
-  lager:critical("~n~n~p~n~n", [{erlang:function_exported(Module, delete_data, 2), Module}]),
-  Methods = case erlang:function_exported(Module, delete_data, 2) of
-              true ->
-                [<<"DELETE">> | Methods0];
-              false ->
-                Methods0
-            end,
+  Methods0 =
+    case erlang:function_exported(Module, validate_payload, 3) or
+      erlang:function_exported(Module, validate_payload, 2) of
+      true ->
+        [<<"PUT">>, <<"PATCH">>];
+      false ->
+        []
+    end,
+  Methods =
+    case erlang:function_exported(Module, delete_data, 2) of
+      true ->
+        [<<"DELETE">> | Methods0];
+      false ->
+        Methods0
+    end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
 
 -spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
@@ -73,7 +74,6 @@ content_types_accepted_default(Req, State) ->
 
 -spec from_fun(_,#{'module':=atom(), _=>_}) -> any().
 from_fun(Req, State = #{module := Module}) ->
-  lager:critical("form fun single"),
   decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
 
 -spec from_fun_default(map(),#{'module':=atom(), _=>_}) -> {'false',#{'resp_body':=_, _=>_},#{'module':=atom(), _=>_}} | {'stop',map(),#{'module':=atom(), _=>_}} | {'true',map(),_}.
@@ -86,10 +86,10 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
          false ->
            undefined
        end,
-  case validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
+  case decirest_handler_lib:validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
-      case Module:persist_data(Payload, State) of
+      case decirest_handler_lib:persist_data(Payload, Req, State) of
         {ok, NewState} ->
           {true, Req, NewState};
         {error, NewState} ->
@@ -109,15 +109,6 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
       RespBody = jsx:encode(Errors),
       ReqNew = cowboy_req:set_resp_body(RespBody, Req),
       {false, ReqNew, State}
-  end.
-
--spec validate_payload(binary(),map(),#{'module':=atom(), 'module_binding':=_, _=>_}) -> any().
-validate_payload(Body, Req, State = #{module := Module}) ->
-  case erlang:function_exported(Module, validate_payload, 3) of 
-    true ->
-      Module:validate_payload(Body, Req, State);
-    false ->
-      Module:validate_payload(Body, State)
   end.
 
 -spec delete_resource(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
