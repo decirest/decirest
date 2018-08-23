@@ -177,7 +177,6 @@ filter_data_on_pk(Data, Req, State = #{child_fun := ChildFun, module := Module})
       false ->
         id
     end,
-  lager:debug("filter_data_on_pk ~p", [Data]),
   [data_prep(D, PKVal, Children, Req, State) || D = #{PK := PKVal} <- Data].
 
 -spec data_prep(map(),_,_,#{'path'=>binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},#{'child_fun':=_, 'module':=_, 'rstate':=_, _=>_}) -> map().
@@ -185,14 +184,14 @@ data_prep(Data, PKVal, Children, Req0 = #{path := Path}, State) ->
   SelfUrl = get_self_url(Path, Data, PKVal),
   Req = Req0#{path => SelfUrl},
   ChildUrls = decirest:child_urls_map(Children, Req, State),
-  maps:merge(ChildUrls, maps:remove(self_url, Data#{details_url => SelfUrl}));
+  maps:merge(ChildUrls, maps:remove(self_url_partials, Data#{self_url => SelfUrl}));
 
 data_prep(Data, _, _, Req, _) ->
   lager:error("prep failure, ~p", [Req]),
   Data.
 
 get_self_url(Path, Data, PKVal) ->
-  case maps:get(self_url, Data, undefined) of
+  case maps:get(self_url_partials, Data, undefined) of
     undefined ->
       decirest:pretty_path([Path, "/", decirest:t2b(PKVal)]);
     [{Replace, Add}] ->
