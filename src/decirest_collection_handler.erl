@@ -184,7 +184,7 @@ data_prep(Data, PKVal, Children, Req0 = #{path := Path}, State) ->
   SelfUrl = get_self_url(Path, Data, PKVal),
   Req = Req0#{path => SelfUrl},
   ChildUrls = decirest:child_urls_map(Children, Req, State),
-  maps:merge(ChildUrls, maps:remove(self_url_partials, Data#{details_url => SelfUrl}));
+  maps:merge(ChildUrls, maps:remove(self_url_partials, Data#{self_url => SelfUrl}));
 
 data_prep(Data, _, _, Req, _) ->
   lager:error("prep failure, ~p", [Req]),
