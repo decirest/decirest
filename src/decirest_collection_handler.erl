@@ -194,13 +194,8 @@ get_self_url(Path, Data, PKVal) ->
   case maps:get(self_url_partials, Data, undefined) of
     undefined ->
       decirest:pretty_path([Path, "/", decirest:t2b(PKVal)]);
-    [{Replace, Add}] ->
-      replace_and_add(Replace, Add, Path);
-    ReplaceAddList ->
-      lists:map(
-        fun({Replace, Add}) ->
-          replace_and_add(Replace, Add, Path)
-        end, ReplaceAddList)
+    {Replace, Add} ->
+      replace_and_add(Replace, Add, Path)
   end.
 
 replace_and_add(Replace, Add, Path) ->
