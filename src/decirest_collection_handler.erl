@@ -9,6 +9,8 @@
   allow_missing_post_default/2,
   allowed_methods/2,
   allowed_methods_default/2,
+  options/2,
+  options_default/2,
   content_types_accepted/2,
   content_types_accepted_default/2,
   from_fun/2,
@@ -68,6 +70,14 @@ allowed_methods_default(Req, State = #{module := Module}) ->
                 []
             end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+
+options(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, options, Req, State, fun options_default/2).
+
+options_default(Req, State) ->
+  %% Use cowboys internal return to indicate that the function
+  %% is not exported and cowboy should use its default options response
+  no_call.
 
 -spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
 content_types_accepted(Req, State = #{module := Module}) ->

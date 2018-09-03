@@ -1,17 +1,30 @@
 -module(decirest_single_handler).
 -export([
   init/2,
-  is_authorized/2, is_authorized_default/2,
-  forbidden/2, forbidden_default/2,
-  allowed_methods/2, allowed_methods_default/2,
-  content_types_accepted/2, content_types_accepted_default/2,
-  from_fun/2, from_fun_default/2,
-  content_types_provided/2, content_types_provided_default/2,
-  to_fun/2, to_fun_default/2,
-  to_html/2, to_html_default/2,
-  to_json/2, to_json_default/2,
-  delete_resource/2, delete_resource_default/2,
-  resource_exists/2, resource_exists_default/2
+  is_authorized/2,
+  is_authorized_default/2,
+  forbidden/2,
+  forbidden_default/2,
+  allowed_methods/2,
+  allowed_methods_default/2,
+  options/2,
+  options_default/2,
+  content_types_accepted/2,
+  content_types_accepted_default/2,
+  from_fun/2,
+  from_fun_default/2,
+  content_types_provided/2,
+  content_types_provided_default/2,
+  to_fun/2,
+  to_fun_default/2,
+  to_html/2,
+  to_html_default/2,
+  to_json/2,
+  to_json_default/2,
+  delete_resource/2,
+  delete_resource_default/2,
+  resource_exists/2,
+  resource_exists_default/2
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
@@ -60,6 +73,14 @@ allowed_methods_default(Req, State = #{module := Module}) ->
         Methods0
     end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+
+options(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, options, Req, State, fun options_default/2).
+
+options_default(Req, State) ->
+  %% Use cowboys internal return to indicate that the function
+  %% is not exported and cowboy should use its default options response
+  no_call.
 
 -spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
 content_types_accepted(Req, State = #{module := Module}) ->
