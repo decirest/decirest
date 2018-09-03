@@ -8,7 +8,6 @@
   allowed_methods/2,
   allowed_methods_default/2,
   options/2,
-  options_default/2,
   content_types_accepted/2,
   content_types_accepted_default/2,
   from_fun/2,
@@ -53,7 +52,9 @@ forbidden_default(Req, State = #{module := Module}) ->
 
 -spec allowed_methods(_,#{'module':=atom(), _=>_}) -> any().
 allowed_methods(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2).
+  {Methods, Req1, State1} =
+    decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2),
+  {Methods, Req1, State1#{allowed_methods => Methods}}.
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
@@ -74,13 +75,8 @@ allowed_methods_default(Req, State = #{module := Module}) ->
     end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
 
-options(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, options, Req, State, fun options_default/2).
-
-options_default(Req, State) ->
-  %% Use cowboys internal return to indicate that the function
-  %% is not exported and cowboy should use its default options response
-  no_call.
+options(Req, State) ->
+  decirest_handler_lib:options(Req, State).
 
 -spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
 content_types_accepted(Req, State = #{module := Module}) ->
