@@ -54,7 +54,15 @@ forbidden_default(Req, State = #{module := Module}) ->
 allowed_methods(Req, State = #{module := Module}) ->
   {Methods, Req1, State1} =
     decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2),
-  {Methods, Req1, State1#{allowed_methods => Methods}}.
+  case cowboy_req:method(Req) of
+    <<"OPTIONS">> ->
+      %% We need to keep allowed_methods in state to
+      %% be able to return in headers if recource implement
+      %% options/2 call back.
+      {Methods, Req1, State1#{allowed_methods => Methods}};
+    _ ->
+      {Methods, Req1, State1}
+  end.
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->

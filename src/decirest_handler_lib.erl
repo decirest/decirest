@@ -55,6 +55,5 @@ options_default(_Req, _State) ->
   no_call.
 
 add_default_allow_header(Req, #{allowed_methods := Methods} = State) ->
-  <<", ", Allow/binary>>
-    = <<<<", ", M/binary>> || M <- Methods>>,
+  <<", ", Allow/binary>> = <<<<", ", M/binary>> || M <- Methods>>,
   {ok, cowboy_req:set_resp_header(<<"allow">>, Allow, Req), State}.
