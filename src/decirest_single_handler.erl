@@ -131,7 +131,7 @@ from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
       {stop, NewReq, NewState};
     {error, Errors} ->
       lager:critical("errors ~p", [Errors]),
-      RespBody = jsx:encode(Errors),
+      RespBody = jiffy:encode(Errors),
       ReqNew = cowboy_req:set_resp_body(RespBody, Req),
       {false, ReqNew, State}
   end.
@@ -188,7 +188,7 @@ to_json(Req, State = #{module := Module}) ->
 to_json_default(Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
   #{Module := #{data := Data}} = RState,
   ChildUrls = decirest:child_urls_map(ChildFun(Module), Req, State),
-  {jsx:encode(maps:merge(ChildUrls, Data), [indent]), Req, State}.
+  {jiffy:encode(maps:merge(ChildUrls, Data)), Req, State}.
 
 -spec resource_exists(_,#{'module':=atom(), _=>_}) -> any().
 resource_exists(Req, State = #{module := Module}) ->
