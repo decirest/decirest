@@ -122,7 +122,7 @@ from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
       end;
     {error, Errors} ->
       lager:critical("errors ~p", [Errors]),
-      RespBody = jiffy:encode(Errors),
+      RespBody = jiffy:encode(Errors, [force_utf8]),
       ReqNew = cowboy_req:set_resp_body(RespBody, Req),
       {false, ReqNew, State}
   end.
@@ -171,7 +171,7 @@ to_json(Req, State = #{module := Module}) ->
 to_json_default(Req, State) ->
   Data0 = fetch_data(Req, State),
   Data = filter_data_on_pk(Data0, Req, State),
-  {jiffy:encode(Data), Req, State}.
+  {jiffy:encode(Data, [force_utf8]), Req, State}.
 
 fetch_data(Req, #{module := Module, rstate := RState}) ->
   case Module:fetch_data(cowboy_req:bindings(Req), RState) of
