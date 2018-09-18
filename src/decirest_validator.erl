@@ -52,30 +52,32 @@ prettify_errors([{data_invalid, _Schema, ErrorType, Value, Path} | Errors], Erro
 prettify_errors([], ErrorMap) ->
   ErrorMap.
 
--spec add_required_errors([any()],_,_,_) -> any().
+-spec add_required_errors([any()], _, _, _) ->
+  any().
 add_required_errors([R | Required], Value, Path, ErrorMap) ->
   case Value of
-    #{R := _} ->
-      add_required_errors(Required, Value, Path, ErrorMap);
-    _ ->
-    P = get_path(Path ++ [R]),
-    add_required_errors(Required, Value, Path, ErrorMap#{P => [required | maps:get(P, ErrorMap, [])]})
+    R ->
+      P = get_path(Path ++ [R]),
+      add_required_errors(Required, Value, Path, ErrorMap#{P => [required | maps:get(P, ErrorMap, [])]});
+    _  ->
+      add_required_errors(Required, Value, Path, ErrorMap)
   end;
 add_required_errors([], _Value, _Path, ErrorMap) ->
   ErrorMap.
 
--spec get_path([any()]) -> any().
+-spec get_path([any()]) ->
+  any().
 get_path([PathPart | PathParts]) ->
   get_path(PathParts, PathPart);
 get_path([]) ->
   <<"root">>.
 
--spec get_path([atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()],_) -> any().
+-spec get_path([atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(), binary() | []) | byte(), binary() | []) | integer()], _) ->
+  any().
 get_path([PathPart | PathParts], Res) ->
   get_path(PathParts, <<Res/binary, "__", (t2b(PathPart))/binary>>);
 get_path([], Res) ->
   Res.
-
 
 validate_values(ReqMap, Map) ->
   WrongValueList = maps:to_list(ReqMap) -- maps:to_list(Map),
