@@ -2,6 +2,7 @@
 
 -export([
   init_dbs/0,
+  delete_dbs/0,
   create_test_data/0
 
 ]).
@@ -15,6 +16,19 @@ init_dbs() ->
   ets:new(m2m_project_user, [bag, named_table, public]),
   ets:new(m2m_project_todo, [bag, named_table, public]),
   ets:new(m2m_user_todo, [bag, named_table, public]),
+  ok.
+
+delete_dbs() ->
+  Tables = [
+    account_db,
+    project_db,
+    user_db,
+    todo_db,
+    m2m_project_user,
+    m2m_project_todo,
+    m2m_user_todo
+  ],
+  [ets:delete(Tab) || Tab <- Tables],
   ok.
 
 create_test_data() ->

@@ -13,7 +13,9 @@ start(_, _) ->
   start_decirest(),
   decirest_example_sup:start_link().
 
-stop(_) ->
+stop(Arg) ->
+  lager:critical("EOL for ~p", [Arg]),
+  cowboy:stop_listener(dr_example),
   ok.
 
 start_decirest() ->
@@ -29,6 +31,7 @@ start_decirest() ->
   lager:set_loglevel(lager_console_backend, debug),
   Rotes = decirest_router:build_routes(Modules),
   Dispatch = cowboy_router:compile(Rotes),
-  {ok, _} = cowboy:start_clear(inapi, [{port, 8081}],
+  code:ensure_modules_loaded([decirest_collection_handler, decirest_single_handler]),
+  {ok, _} = cowboy:start_clear(dr_example, [{port, 8081}],
     #{env => #{dispatch => Dispatch}}
   ).
