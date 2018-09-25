@@ -1,5 +1,4 @@
-[![Travis][travis badge]][travis]
-
+[![Build Status](https://travis-ci.org/lixen/decirest.svg?branch=master)](https://travis-ci.org/lixen/decirest)
 
 Decirest
 ===
