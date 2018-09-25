@@ -1,3 +1,6 @@
+[![Travis][travis badge]][travis]
+
+
 Decirest
 ===
 
