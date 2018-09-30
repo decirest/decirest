@@ -10,7 +10,6 @@
 -author("jso").
 
 %% API
-%% API
 -export([
   name/0,
   paths/0,
