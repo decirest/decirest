@@ -1,0 +1,9 @@
+{application, decirest_example, [
+  {description, "Example project for showcasing decirest functionality"},
+  {vsn, "0.1.0"},
+  {modules, []},
+  {registered, [decirest_example_sup]},
+  {applications, [decirest, lager]},
+  {mod, {decirest_example_app, []}},
+  {env, []}
+]}.
