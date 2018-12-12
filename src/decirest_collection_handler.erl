@@ -110,6 +110,9 @@ from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
         {ok, NewState} ->
           SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(ID)]),
           {{true, SelfUrl}, Req, NewState};
+        {ok, #{PK := ID}, NewState} ->
+          SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(ID)]),
+          {{true, SelfUrl}, Req, NewState};
         {error, NewState} ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
           {stop, ReqNew, NewState};
