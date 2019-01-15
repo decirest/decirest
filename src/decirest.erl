@@ -202,7 +202,18 @@ do_callback(Module, Callback, Req, State, Default) ->
 apply_with_default(M, F, A, Default) ->
   case erlang:function_exported(M, F, length(A)) of
     true ->
-      erlang:apply(M, F, A);
+      case erlang:apply(M, F, A) of
+        %% UpdatedA should be same length/type as A
+        {run_default, UpdatedA} ->
+          case is_function(Default) of
+            true ->
+              erlang:apply(Default, UpdatedA);
+            false ->
+              exit(run_default_not_a_function)
+          end;
+        Res ->
+          Res
+      end;
     false ->
       case is_function(Default) of
         true ->
