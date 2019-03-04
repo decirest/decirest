@@ -1,5 +1,6 @@
 -module(decirest_collection_handler).
 -export([
+replace_and_add/3,
   init/2,
   is_authorized/2,
   is_authorized_default/2,
@@ -216,11 +217,11 @@ get_self_url(Path, Data, PKVal) ->
   end.
 
 replace_and_add(Replace, Add, Path) ->
-  case hd(string:split(Path, Replace)) of
+  case hd(string:split(Path, <<"/", Replace/binary>>)) of
     [] ->
       error(wrong_self);
     SelfBase ->
-      <<SelfBase/binary, Add/binary>>
+      <<SelfBase/binary, "/", Add/binary>>
   end.
 
 -spec resource_exists(_,#{'module':=atom(), _=>_}) -> any().
