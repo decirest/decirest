@@ -89,9 +89,17 @@ merge_routes([], _Cfg, Res) ->
 
 -spec child_fun_factory([any()]) -> fun((_) -> [any()]).
 child_fun_factory(Resources) ->
-  FFun = fun(CR, Acc) -> [[{R, CR} || R <- erlang:apply(CR, child_of, [])] | Acc] end,
-  CsList = lists:flatten(lists:foldl(FFun, [], Resources)),
-  fun(PR) -> proplists:get_all_values(PR, CsList) end.
+  FFun =
+    fun(CR, Acc) ->
+      [[{R, CR} || R <- erlang:apply(CR, child_of, []), is_children_visible(R)] | Acc]
+    end,
+
+  CsList =
+    lists:flatten(lists:foldl(FFun, [], Resources)),
+
+  fun(PR) ->
+    proplists:get_all_values(PR, CsList)
+  end.
 
 -spec child_url(atom(),#{'path':=binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},_) -> binary().
 child_url(Module, #{path := Path}, _State) ->
@@ -108,6 +116,23 @@ child_url(Module, #{path := Path}, _State) ->
         Module:name()
     end,
   pretty_path([Path, "/", ChildPath]).
+
+is_children_visible(Module) ->
+  case erlang:function_exported(Module, paths, 0) of
+    true ->
+      case Module:paths() of
+        [{_, _} | _] ->
+          true;
+        [{_, _, #{children := false}} | _] ->
+          false;
+        [{_, _, #{children := hidden}} | _] ->
+          false;
+        [{_, _, _} | _] ->
+          true
+      end;
+    false ->
+      true
+  end.
 
 -spec child_urls_map([atom()],_,_) -> map().
 child_urls_map(Children, Req, State) ->
