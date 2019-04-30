@@ -71,7 +71,7 @@
     window.decirest_single_data = {{ single_data | default:null}};
 {% endautoescape %}
 </script>
-<script src="https://unpkg.com/vue"></script>
+<script src="https://unpkg.com/vue@2.6.10/dist/vue.min.js"></script>
 <script src="/assets/js/decirest.js"></script>
 <script type="text/javascript" charset="utf-8">
     function collection() {

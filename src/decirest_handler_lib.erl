@@ -15,6 +15,7 @@
   persist_data/3,
   options/2,
   options_default/2,
+  maybe_pretty/2,
   add_default_allow_header/2
 ]).
 
@@ -53,6 +54,16 @@ options_default(_Req, _State) ->
   %% Use cowboys internal return to indicate that the function
   %% is not exported and cowboy should use its default options response
   no_call.
+
+maybe_pretty(Req, State = #{module := Module}) ->
+  case decirest:do_callback(Module, pretty, Req, State, false) of
+    true ->
+      [pretty];
+    false ->
+      [];
+    {false, _, _} ->
+      []
+   end.
 
 add_default_allow_header(Req, #{allowed_methods := Methods} = State) ->
   <<", ", Allow/binary>> = <<<<", ", M/binary>> || M <- Methods>>,

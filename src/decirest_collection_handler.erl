@@ -175,7 +175,8 @@ to_json(Req, State = #{module := Module}) ->
 to_json_default(Req, State) ->
   Data0 = fetch_data(Req, State),
   Data = filter_data_on_pk(Data0, Req, State),
-  {jiffy:encode(Data, [force_utf8]), Req, State}.
+  PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
+  {jiffy:encode(Data, [force_utf8] ++ PrettyConfig), Req, State}.
 
 fetch_data(Req, #{module := Module, rstate := RState}) ->
   case Module:fetch_data(cowboy_req:bindings(Req), RState) of
