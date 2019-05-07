@@ -185,11 +185,11 @@ to_json(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_json, Req, State, fun to_json_default/2).
 
 -spec to_json_default(_,#{'child_fun':=fun((_) -> any()), 'module':=_, 'rstate':=map(), _=>_}) -> {binary(),_,#{'child_fun':=fun((_) -> any()), 'module':=_, 'rstate':=map(), _=>_}}.
-to_json_default(Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
+to_json_default(#{path := Path} = Req, State = #{child_fun := ChildFun, module := Module, rstate := RState}) ->
   #{Module := #{data := Data}} = RState,
   ChildUrls = decirest:child_urls_map(ChildFun(Module), Req, State),
   PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
-  {jiffy:encode(maps:merge(ChildUrls, Data), [force_utf8] ++ PrettyConfig), Req, State}.
+  {jiffy:encode(maps:merge(ChildUrls, Data#{self_url => Path}), [force_utf8] ++ PrettyConfig), Req, State}.
 
 -spec resource_exists(_,#{'module':=atom(), _=>_}) -> any().
 resource_exists(Req, State = #{module := Module}) ->
