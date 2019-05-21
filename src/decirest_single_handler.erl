@@ -93,8 +93,8 @@ content_types_accepted(Req, State = #{module := Module}) ->
 -spec content_types_accepted_default(_,_) -> {[{{_,_,_},'from_fun'},...],_,_}.
 content_types_accepted_default(Req, State) ->
   {[
-    {{<<"application">>, <<"json">>, []}, from_fun},
-    {{<<"application">>, <<"javascript">>, []}, from_fun}
+    {{<<"application">>, <<"json">>, '*'}, from_fun},
+    {{<<"application">>, <<"javascript">>, '*'}, from_fun}
   ], Req, State}.
 
 -spec from_fun(_,#{'module':=atom(), _=>_}) -> any().
