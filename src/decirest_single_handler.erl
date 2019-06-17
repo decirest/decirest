@@ -208,7 +208,7 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
     {ok, Data} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
     {error, Reason} ->
-      lager:error("got exception when fetching data ~p", [Reason]),
+      lager:debug("got exception when fetching data ~p", [Reason]),
       {false, Req, State}
   end;
 resource_exists_default(Req, State = #{module := Module}) ->
