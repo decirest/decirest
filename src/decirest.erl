@@ -5,6 +5,8 @@
   call_mro/3,
   call_mro/4,
   call_mro/5,
+  continue_mro/0,
+  continue_mro/1,
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
@@ -14,6 +16,8 @@
   do_callback/5,
   apply_with_default/4,
   pretty_path/1,
+  get_parent/1,
+  add_parent_binding/2,
   t2b/1
 ]).
 
@@ -192,9 +196,24 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
   {Res, Req, State}.
 
+continue_mro() ->
+  continue_mro(true).
+
+continue_mro(Match) ->
+  fun({Match, _, _}) -> true;(_) -> false end.
+
 -spec is_ansestor(atom(), map()) -> true | false.
 is_ansestor(Module, #{mro := MRO}) ->
   lists:keymember(Module, 2, MRO).
+
+get_parent(#{mro := MRO}) ->
+  [_, {_, Parent} | _] = lists:reverse(MRO),
+  Parent.
+
+add_parent_binding(Req0, State) ->
+  Parent = get_parent(State),
+  Bindings = cowboy_req:bindings(Req0),
+  Req0#{bindings => Bindings#{parent => Parent}}.
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->

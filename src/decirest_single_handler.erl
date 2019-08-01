@@ -209,7 +209,13 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
     {error, Reason} ->
       lager:debug("got exception when fetching data ~p", [Reason]),
-      {false, Req, State}
+      {false, Req, State};
+    {StatusCode, NewState} when is_number(StatusCode) ->
+      ReqNew = cowboy_req:reply(StatusCode, Req),
+      {stop, ReqNew, NewState};
+    {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
+      ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+      {stop, ReqNew, NewState}
   end;
 resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
