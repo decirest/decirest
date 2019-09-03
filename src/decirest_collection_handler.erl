@@ -178,8 +178,8 @@ to_json_default(Req, State) ->
   PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
   {jiffy:encode(Data, [force_utf8] ++ PrettyConfig), Req, State}.
 
-fetch_data(Req, #{module := Module, rstate := RState}) ->
-  case Module:fetch_data(cowboy_req:bindings(Req), RState) of
+fetch_data(Req, #{module := Module} = State) ->
+  case Module:fetch_data(cowboy_req:bindings(Req), State) of
     {ok, D} ->
       D;
     {error, Msg} ->

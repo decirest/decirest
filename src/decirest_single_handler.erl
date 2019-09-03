@@ -197,7 +197,7 @@ resource_exists(Req, State = #{module := Module}) ->
 
 -spec resource_exists_default(_,#{'module':=_, _=>_}) -> any().
 resource_exists_default(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
-  case Module:fetch_data(cowboy_req:bindings(Req), RState) of
+  case Module:fetch_data(cowboy_req:bindings(Req), State) of
     {ok, [Data]} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
     {ok, []} ->
