@@ -10,7 +10,7 @@
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
-  is_ansestor/2,
+  is_ancestor/2,
   module_pk/1,
   do_callback/4,
   do_callback/5,
@@ -202,8 +202,8 @@ continue_mro() ->
 continue_mro(Match) ->
   fun({Match, _, _}) -> true;(_) -> false end.
 
--spec is_ansestor(atom(), map()) -> true | false.
-is_ansestor(Module, #{mro := MRO}) ->
+-spec is_ancestor(atom(), map()) -> true | false.
+is_ancestor(Module, #{mro := MRO}) ->
   lists:keymember(Module, 2, MRO).
 
 get_parent(#{mro := MRO}) ->
