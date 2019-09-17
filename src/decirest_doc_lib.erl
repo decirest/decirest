@@ -18,7 +18,6 @@
 ]).
 
 fetch_doc_by_module(Ref, Module, Req, State) ->
-  lager:critical("by module"),
   case get_all_model_routes(Ref) of
     #{Module := [FirstPath | _]} ->
       fetch_doc_by_path(Ref, Req#{path => FirstPath}, State);
@@ -27,7 +26,6 @@ fetch_doc_by_module(Ref, Module, Req, State) ->
   end.
 
 fetch_doc_by_path(Ref, Req, State) ->
-  %lager:critical("by path, ~p", [Req]),
   #{env := Env} = ranch:get_protocol_options(Ref),
   case cowboy_router:execute(Req, Env) of
     {ok, _ReqNew, _EnvNew = #{handler := H, handler_opts := HO}} ->
@@ -38,11 +36,18 @@ fetch_doc_by_path(Ref, Req, State) ->
       stop
   end.
 
-
 make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req, State) ->
   D0 = #{name => atom_to_binary(Module, utf8), module => Module},
   D1 = maps:merge(D0, fetch_info(Handler, HandlerOpts, Req, State)),
-  D2 = maps:merge(D1, decirest:apply_with_default(Module, doc, [], #{})),
+
+  D2 =
+    case erlang:function_exported(Module, doc, 1) of
+      true ->
+        %% Used for doc that depend on path
+        maps:merge(D1, decirest:apply_with_default(Module, doc, [HandlerOpts], #{}));
+      false ->
+        maps:merge(D1, decirest:apply_with_default(Module, doc, [], #{}))
+    end,
   Paths = get_model_routes(Ref, Module),
   D2#{paths => Paths}.
 
