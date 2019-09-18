@@ -17,8 +17,11 @@
   apply_with_default/4,
   pretty_path/1,
   get_parent/1,
-  add_parent_binding/2,
-  t2b/1
+  get_parent_pk/1,
+  t2b/1,
+  get_data/2,
+  get_data/3,
+  get_data/4
 ]).
 
 -ifdef(TEST).
@@ -210,10 +213,9 @@ get_parent(#{mro := MRO}) ->
   [_, {_, Parent} | _] = lists:reverse(MRO),
   Parent.
 
-add_parent_binding(Req0, State) ->
+get_parent_pk(State) ->
   Parent = get_parent(State),
-  Bindings = cowboy_req:bindings(Req0),
-  Req0#{bindings => Bindings#{parent => Parent}}.
+  {Parent, module_pk(Parent)}.
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->
@@ -265,6 +267,37 @@ apply_with_default(M, F, A, Default) ->
         false ->
           Default
       end
+  end.
+
+-spec get_data(atom(), map()) -> any().
+get_data(Module, #{rstate := RState}) ->
+  get_data(Module, RState);
+get_data(Module, State) ->
+  case State of
+    #{Module := #{data := Data}} ->
+      Data;
+    _ ->
+      undefined
+  end.
+
+-spec get_data(any(), atom(), map()) -> any().
+get_data(Key, Module, State) ->
+  get_data(Key, Module, State, undefined).
+
+-spec get_data(any(), atom(), map(), any()) -> any().
+get_data(Key, Module, State, Default) ->
+  case get_data(Module, State) of
+    #{Key := Val} ->
+      Val;
+    #{} = Data ->
+      case proplists:get_value(inu:t2b(Key), [{inu:t2b(K), K} || K <- maps:keys(Data)]) of
+        undefined ->
+          Default;
+        RawKey ->
+          maps:get(RawKey, Data)
+      end;
+    _ ->
+      Default
   end.
 
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
