@@ -209,9 +209,14 @@ continue_mro(Match) ->
 is_ancestor(Module, #{mro := MRO}) ->
   lists:keymember(Module, 2, MRO).
 
-get_parent(#{mro := MRO}) ->
-  [_, {_, Parent} | _] = lists:reverse(MRO),
-  Parent.
+get_parent(#{mro := MRO, module := CurrentModule}) ->
+  get_parent(lists:reverse(MRO), CurrentModule).
+
+get_parent([{_, CurrentModule}, {_, Parent} | _Tail], CurrentModule) ->
+  Parent;
+
+get_parent([{_, _}, {Handler, Parent} | Tail], CurrentModule) ->
+  get_parent([{Handler, Parent} | Tail], CurrentModule).
 
 get_parent_pk(State) ->
   Parent = get_parent(State),
@@ -281,7 +286,7 @@ get_data(Module, State) ->
   end.
 
 -spec get_data(any(), atom(), map()) -> any().
-get_data(Key, Module, State) ->
+get_data(Key, Module, State) when is_atom(Module) ->
   get_data(Key, Module, State, undefined).
 
 -spec get_data(any(), atom(), map(), any()) -> any().
@@ -320,5 +325,16 @@ child_url_test() ->
   ChildPath = "user",
   ?assert(lists:member(Path, cowboy_req:uri(Req, #{host => undefined}))),
   ?assertEqual(pretty_path([Path, "/", ChildPath]), <<"/api/v1/company/1/user">>).
+
+
+get_parent_test() ->
+  State = #{mro =>
+  [{decirest_single_handler, res_1},
+    {decirest_single_handler, res_2},
+    {decirest_single_handler, res_3},
+    {decirest_single_handler, res_4},
+    {decirest_single_handler, res5}],
+    module => res_3},
+  ?assertEqual(res_2, get_parent(State)).
 
 -endif.
