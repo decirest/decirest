@@ -1,7 +1,5 @@
 -module(decirest).
 -export([
-  build_routes/1,
-  build_routes/2,
   call_mro/3,
   call_mro/4,
   call_mro/5,
@@ -29,24 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
-
--spec build_routes(atom() | [atom()]) -> [{_,_,map()}].
-build_routes(Mod) ->
-  build_routes(Mod, decirest_handler).
-
--spec build_routes(atom() | [atom()],_) -> [{_,_,map()}].
-build_routes(Mod, Handler) when is_atom(Mod)->
-  build_routes([Mod], Handler, child_fun_factory([Mod]), []);
-build_routes(Modules, Handler) ->
-  build_routes(Modules, Handler, child_fun_factory(Modules), []).
-
--spec build_routes([atom()],_,fun((_) -> [any()]),[[[any()] | {_,_,_}]]) -> [{_,_,map()}].
-build_routes([Mod | Modules], Handler, ChildFun, Res) ->
-  MRes = build_routes_path(Mod:paths(), Handler, Mod),
-  build_routes(Modules, Handler, ChildFun, [MRes | Res]);
-build_routes([], _Handler, ChildFun, Res) ->
-  Routes = lists:flatten(Res),
-  [{P, H, S#{children => ChildFun(M)}} || {P, H, S = #{module := M}} <- Routes].
 
 -spec build_routes_with_state(_,_,#{'module':=_, 'mro':=[any()], _=>_}) -> [{_,_,_}].
 build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) ->
@@ -325,7 +305,6 @@ child_url_test() ->
   ChildPath = "user",
   ?assert(lists:member(Path, cowboy_req:uri(Req, #{host => undefined}))),
   ?assertEqual(pretty_path([Path, "/", ChildPath]), <<"/api/v1/company/1/user">>).
-
 
 get_parent_test() ->
   State = #{mro =>
