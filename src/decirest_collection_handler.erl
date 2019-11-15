@@ -27,7 +27,8 @@ replace_and_add/3,
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
-init(Req, State) ->
+init(Req, State0) ->
+  State = decirest_router:maybe_reroute_to_module(Req, State0),
   {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
