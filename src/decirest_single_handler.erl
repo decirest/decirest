@@ -27,8 +27,10 @@
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
-init(Req, State0) ->
-  State = decirest_router:maybe_reroute_to_module(Req, State0),
+init(Req, State = #{module := Module}) ->
+  decirest:apply_with_default(Module, init, [Req, State], fun init_default/2).
+
+init_default(Req, State) ->
   {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().

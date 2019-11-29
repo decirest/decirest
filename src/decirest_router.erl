@@ -1,38 +1,10 @@
 -module(decirest_router).
 -export([
-  maybe_reroute_to_module/2,
   build_routes/1,
   build_routes/2,
   get_all_active_routes/1,
   get_all_active_routes/2
 ]).
-
-
-
-%%------------------------------------------------------------------------------
-%% @doc makes it possible to reroute to a different module
-%%      Can be used to implement api versions
-%%      Should be used in init/2 in handler implementations
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_reroute_to_module(Req, State) -> State when
-  Req :: map(),
-  State :: map(). %% Decirest state
-maybe_reroute_to_module(Req, #{module := Module} = State) ->
-  case erlang:function_exported(Module, reroute, 2) of
-    false ->
-      State;
-    true ->
-      RerouteModule = Module:reroute(Req, State),
-      reroute_to_module(RerouteModule, State)
-  end.
-
--spec reroute_to_module(Module, State) -> State when
-  Module :: atom(),
-  State :: map(). %% Decirest state
-reroute_to_module(Module, #{mro := MRO} = State) ->
-  [{Handler, _OldModule} | Tail] = lists:reverse(MRO),
-  State#{module => Module, main_module => Module, mro => lists:reverse([{Handler, Module}| Tail])}.
 
 -spec get_paths(atom(),map()) -> [{_,_,map()}].
 get_paths(Module, Options) ->

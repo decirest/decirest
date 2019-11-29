@@ -19,7 +19,8 @@
   t2b/1,
   get_data/2,
   get_data/3,
-  get_data/4
+  get_data/4,
+  change_module/2
 ]).
 
 -ifdef(TEST).
@@ -284,6 +285,23 @@ get_data(Key, Module, State, Default) ->
     _ ->
       Default
   end.
+
+%%------------------------------------------------------------------------------
+%% @doc makes it possible to reroute to a different module
+%%      Can be used to implement api versions
+%%      Should be used in init/2 in handler implementations
+%%
+%%      init(Req, State) ->
+%%          {run_default, [Req, decirest:change_module(different_modules, State)]}.
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec change_module(Module, State) -> State when
+  Module :: atom(),
+  State :: map(). %% Decirest state
+change_module(Module, #{mro := MRO} = State) ->
+  [{Handler, _OldModule} | Tail] = lists:reverse(MRO),
+  State#{module => Module, main_module => Module, mro => lists:reverse([{Handler, Module}| Tail])}.
 
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
