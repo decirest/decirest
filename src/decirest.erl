@@ -1,7 +1,5 @@
 -module(decirest).
 -export([
-  build_routes/1,
-  build_routes/2,
   call_mro/3,
   call_mro/4,
   call_mro/5,
@@ -21,7 +19,8 @@
   t2b/1,
   get_data/2,
   get_data/3,
-  get_data/4
+  get_data/4,
+  change_module/2
 ]).
 
 -ifdef(TEST).
@@ -29,24 +28,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
-
--spec build_routes(atom() | [atom()]) -> [{_,_,map()}].
-build_routes(Mod) ->
-  build_routes(Mod, decirest_handler).
-
--spec build_routes(atom() | [atom()],_) -> [{_,_,map()}].
-build_routes(Mod, Handler) when is_atom(Mod)->
-  build_routes([Mod], Handler, child_fun_factory([Mod]), []);
-build_routes(Modules, Handler) ->
-  build_routes(Modules, Handler, child_fun_factory(Modules), []).
-
--spec build_routes([atom()],_,fun((_) -> [any()]),[[[any()] | {_,_,_}]]) -> [{_,_,map()}].
-build_routes([Mod | Modules], Handler, ChildFun, Res) ->
-  MRes = build_routes_path(Mod:paths(), Handler, Mod),
-  build_routes(Modules, Handler, ChildFun, [MRes | Res]);
-build_routes([], _Handler, ChildFun, Res) ->
-  Routes = lists:flatten(Res),
-  [{P, H, S#{children => ChildFun(M)}} || {P, H, S = #{module := M}} <- Routes].
 
 -spec build_routes_with_state(_,_,#{'module':=_, 'mro':=[any()], _=>_}) -> [{_,_,_}].
 build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) ->
@@ -305,6 +286,23 @@ get_data(Key, Module, State, Default) ->
       Default
   end.
 
+%%------------------------------------------------------------------------------
+%% @doc makes it possible to reroute to a different module
+%%      Can be used to implement api versions
+%%      Should be used in init/2 in handler implementations
+%%
+%%      init(Req, State) ->
+%%          {run_default, [Req, decirest:change_module(different_modules, State)]}.
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec change_module(Module, State) -> State when
+  Module :: atom(),
+  State :: map(). %% Decirest state
+change_module(Module, #{mro := MRO} = State) ->
+  [{Handler, _OldModule} | Tail] = lists:reverse(MRO),
+  State#{module => Module, main_module => Module, mro => lists:reverse([{Handler, Module}| Tail])}.
+
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
 t2b(V) when is_list(V) -> list_to_binary(V);
@@ -325,7 +323,6 @@ child_url_test() ->
   ChildPath = "user",
   ?assert(lists:member(Path, cowboy_req:uri(Req, #{host => undefined}))),
   ?assertEqual(pretty_path([Path, "/", ChildPath]), <<"/api/v1/company/1/user">>).
-
 
 get_parent_test() ->
   State = #{mro =>

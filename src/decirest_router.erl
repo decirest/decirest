@@ -3,8 +3,7 @@
   build_routes/1,
   build_routes/2,
   get_all_active_routes/1,
-  get_all_active_routes/2,
-  get_paths/2
+  get_all_active_routes/2
 ]).
 
 -spec get_paths(atom(),map()) -> [{_,_,map()}].
