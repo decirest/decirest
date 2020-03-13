@@ -51,12 +51,12 @@ make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req, State) -
   Paths = get_model_routes(Ref, Module),
   D2#{paths => Paths}.
 
-fetch_info(Handler, HandlerOpts, Req, State0 = #{module := Module, child_fun := ChildFun}) ->
+fetch_info(Handler, HandlerOpts, Req, State0 = #{module := Module}) ->
   State = maps:merge(State0, HandlerOpts),
   {AM, _, _} = Handler:allowed_methods(Req, State),
   {CTA, _, _} = Handler:content_types_accepted(Req, State),
   {CTP, _, _} = Handler:content_types_provided(Req, State),
-  ChildUrls = decirest:child_urls_map(ChildFun(Module), Req, State),
+  ChildUrls = decirest:child_urls_map(decirest:get_children(Module), Req, State),
   #{
     allowed_methods => AM,
     content_types_allowed => fix_content_type(CTA),

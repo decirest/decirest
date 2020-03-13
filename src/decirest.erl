@@ -5,6 +5,7 @@
   call_mro/5,
   continue_mro/0,
   continue_mro/1,
+  get_children/1,
   child_fun_factory/1,
   child_url/3,
   child_urls_map/3,
@@ -75,19 +76,21 @@ merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod
 merge_routes([], _Cfg, Res) ->
   Res.
 
+get_children(Resource) ->
+  persistent_term:get({?MODULE, Resource}, []).
+
 -spec child_fun_factory([any()]) -> fun((_) -> [any()]).
 child_fun_factory(Resources) ->
-  FFun =
-    fun(CR, Acc) ->
-      [[{R, CR} || R <- erlang:apply(CR, child_of, []), is_children_visible(R)] | Acc]
-    end,
+  [persistent_term:erase({?MODULE, Resource}) || Resource <- Resources],
+  [add_resource_as_child(Resource) || Resource <- Resources],
+  ok.
 
-  CsList =
-    lists:flatten(lists:foldl(FFun, [], Resources)),
+add_resource_as_child(Rersource) ->
+  [add_child(Parent, Rersource) || Parent <- Rersource:child_of(), is_children_visible(Parent)].
 
-  fun(PR) ->
-    proplists:get_all_values(PR, CsList)
-  end.
+add_child(Parent, Child) ->
+  PrevChildren = get_children(Parent),
+  persistent_term:put({?MODULE, Parent}, [Child | PrevChildren]).
 
 -spec child_url(atom(),#{'path':=binary() | maybe_improper_list(any(),binary() | []) | byte(), _=>_},_) -> binary().
 child_url(Module, #{path := Path}, _State) ->
