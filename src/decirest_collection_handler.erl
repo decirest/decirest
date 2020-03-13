@@ -173,8 +173,6 @@ to_html_default(Req, State = #{module := Module}) ->
 to_json(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_json, Req, State, fun to_json_default/2).
 
--spec to_json_default(map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}) ->
-  {binary(),map(),#{'child_fun':=fun((_) -> any()), 'module':=atom(), 'rstate':=_, _=>_}}.
 to_json_default(Req, State) ->
   Data0 = fetch_data(Req, State),
   Data = filter_data_on_pk(Data0, Req, State),
@@ -190,8 +188,8 @@ fetch_data(Req, #{module := Module} = State) ->
       []
   end.
 
-filter_data_on_pk(Data, Req, State = #{child_fun := ChildFun, module := Module}) ->
-  Children = ChildFun(Module),
+filter_data_on_pk(Data, Req, State = #{module := Module}) ->
+  Children = decirest:get_children(Module),
   PK =
     case erlang:function_exported(Module, data_pk, 0) of
       true ->

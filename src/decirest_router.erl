@@ -50,18 +50,18 @@ build_routes(Modules) ->
 -spec build_routes(_,map()) -> [{'_',[],[any()]},...].
 build_routes(Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
-  ChildFun = decirest:child_fun_factory(Modules),
+  ok = decirest:child_fun_factory(Modules),
   Hosts = maps:get(hosts, Options, ['_']),
 
   UpdatedOptions =
     Options#{
       hosts => Hosts,
       all_modules => Modules,
-      state => State#{child_fun => ChildFun}},
+      state => State#{}},
 
   build_routes(Modules, UpdatedOptions, []).
 
--spec build_routes([any()],#{'state':=#{'child_fun':=fun((_) -> any()), _=>_}, _=>_},[any()]) -> [{'_',[],[any()]},...].
+-spec build_routes([any()],#{'state':=#{}, _=>_},[any()]) -> [{'_',[],[any()]},...].
 build_routes([Module | Modules], Options, Res) ->
   build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
 build_routes([], #{nostatic := true, hosts := Hosts}, Res) ->
