@@ -70,14 +70,14 @@ allowed_methods(Req, State = #{module := Module}) ->
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
   Methods0 =
-    case is_exported(Module, validate_payload, [2,3]) of
+    case decirest_handler_lib:is_exported(Module, validate_payload, [2,3]) of
       true ->
         [<<"PUT">>, <<"PATCH">>];
       false ->
         []
     end,
   Methods =
-    case is_exported(Module, delete_data, 2) of
+    case decirest_handler_lib:is_exported(Module, delete_data, 2) of
       true ->
         [<<"DELETE">> | Methods0];
       false ->
@@ -107,7 +107,7 @@ from_fun(Req, State = #{module := Module}) ->
 from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
-  MB = case is_exported(Module, ident, 0) of
+  MB = case decirest_handler_lib:is_exported(Module, ident, 0) of
          true ->
            cowboy_req:binding(Module:ident(), Req);
          false ->
@@ -223,11 +223,3 @@ resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
   {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
-
-is_exported(Module, Function, ArityList) when is_list(ArityList) ->
-  lists:any(fun(R) -> R end,
-    [is_exported(Module, Function, Arity) || Arity <- ArityList ]
-  );
-
-is_exported(Module, Function, Arity) ->
-  erlang:function_exported(Module, Function, Arity).
