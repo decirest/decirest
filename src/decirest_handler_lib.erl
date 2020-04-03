@@ -11,6 +11,9 @@
 
 %% API
 -export([
+  is_exported/3,
+  fetch_data/2,
+  delete_data/2,
   validate_payload/3,
   persist_data/3,
   options/2,
@@ -19,9 +22,35 @@
   add_default_allow_header/2
 ]).
 
+is_exported(Module, Function, ArityList) when is_list(ArityList) ->
+  lists:any(fun(R) -> R end,
+    [is_exported(Module, Function, Arity) || Arity <- ArityList ]
+  );
+
+is_exported(Module, Function, Arity) ->
+  erlang:function_exported(Module, Function, Arity).
+
+fetch_data(Req, State = #{module := Module}) ->
+  Bindings = cowboy_req:bindings(Req),
+  case is_exported(Module, fetch_data, 3) of
+    true ->
+      Module:fetch_data(Bindings, Req, State);
+    false ->
+      Module:fetch_data(Bindings, State)
+  end.
+
+delete_data(Req, State = #{module := Module}) ->
+  Bindings = cowboy_req:bindings(Req),
+  case is_exported(Module, delete_data, 3) of
+    true ->
+      Module:delete_data(Bindings, Req, State);
+    false ->
+      Module:delete_data(Bindings, State)
+  end.
+
 -spec validate_payload(binary(), map(), #{'module':=atom(), 'module_binding':=_, _=>_}) -> any().
 validate_payload(Body, Req, State = #{module := Module}) ->
-  case erlang:function_exported(Module, validate_payload, 3) of
+  case is_exported(Module, validate_payload, 3) of
     true ->
       Module:validate_payload(Body, Req, State);
     false ->
@@ -30,7 +59,7 @@ validate_payload(Body, Req, State = #{module := Module}) ->
 
 -spec persist_data(binary(), map(), #{'module':=atom(), _=>_}) -> any().
 persist_data(Body, Req, State = #{module := Module}) ->
-  case erlang:function_exported(Module, persist_data, 3) of
+  case is_exported(Module, persist_data, 3) of
     true ->
       Module:persist_data(Body, Req, State);
     false ->

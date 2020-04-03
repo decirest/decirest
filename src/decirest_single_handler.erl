@@ -70,15 +70,14 @@ allowed_methods(Req, State = #{module := Module}) ->
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
   Methods0 =
-    case erlang:function_exported(Module, validate_payload, 3) or
-      erlang:function_exported(Module, validate_payload, 2) of
+    case decirest_handler_lib:is_exported(Module, validate_payload, [2,3]) of
       true ->
         [<<"PUT">>, <<"PATCH">>];
       false ->
         []
     end,
   Methods =
-    case erlang:function_exported(Module, delete_data, 2) of
+    case decirest_handler_lib:is_exported(Module, delete_data, 2) of
       true ->
         [<<"DELETE">> | Methods0];
       false ->
@@ -108,7 +107,7 @@ from_fun(Req, State = #{module := Module}) ->
 from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
-  MB = case erlang:function_exported(Module, ident, 0) of
+  MB = case decirest_handler_lib:is_exported(Module, ident, 0) of
          true ->
            cowboy_req:binding(Module:ident(), Req);
          false ->
@@ -144,8 +143,8 @@ delete_resource(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, delete_resource, Req, State, fun delete_resource_default/2).
 
 -spec delete_resource_default(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
-delete_resource_default(Req, State = #{module := Module}) ->
-  Module:delete_data(Req, State).
+delete_resource_default(Req, State) ->
+  decirest_handler_lib:delete_data(Req, State).
 
 -spec content_types_provided(_,#{'module':=atom(), _=>_}) -> any().
 content_types_provided(Req, State = #{module := Module}) ->
@@ -200,7 +199,7 @@ resource_exists(Req, State = #{module := Module}) ->
 
 -spec resource_exists_default(_,#{'module':=_, _=>_}) -> any().
 resource_exists_default(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
-  case Module:fetch_data(cowboy_req:bindings(Req), State) of
+  case decirest_handler_lib:fetch_data(Req, State) of
     {ok, [Data]} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
     {ok, []} ->
@@ -224,5 +223,3 @@ resource_exists_default(Req, State = #{module := Module}) ->
   Continue = fun({true, _, _}) -> true;(_) -> false end,
   {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
-
-

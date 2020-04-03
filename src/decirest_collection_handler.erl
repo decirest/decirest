@@ -75,13 +75,13 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods = case erlang:function_exported(Module, validate_payload, 3) or
-    erlang:function_exported(Module, validate_payload, 2) of
-              true->
-                [<<"POST">>];
-              false ->
-                []
-            end,
+  Methods =
+    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
+      true ->
+        [<<"POST">>];
+      false ->
+        []
+    end,
   {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
 
 options(Req, State) ->
@@ -191,7 +191,7 @@ fetch_data(Req, #{module := Module} = State) ->
 filter_data_on_pk(Data, Req, State = #{module := Module}) ->
   Children = decirest:get_children(Module),
   PK =
-    case erlang:function_exported(Module, data_pk, 0) of
+    case decirest_handler_lib:is_exported(Module, data_pk, 0) of
       true ->
         Module:data_pk();
       false ->
