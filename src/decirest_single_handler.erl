@@ -16,6 +16,8 @@
   content_types_provided_default/2,
   to_fun/2,
   to_fun_default/2,
+  to_csv/2,
+  to_csv_default/2,
   to_html/2,
   to_html_default/2,
   to_json/2,
@@ -154,6 +156,7 @@ content_types_provided(Req, State = #{module := Module}) ->
 content_types_provided_default(Req, State) ->
   {[
     {{<<"text">>, <<"html">>, '*'}, to_html},
+    {{<<"text">>, <<"csv">>, '*'}, to_csv},
     {{<<"application">>, <<"json">>, '*'}, to_json},
     {{<<"application">>, <<"javascript">>, '*'}, to_json},
     {{<<"application">>, <<"octet-stream">>, '*'}, to_fun}
@@ -166,6 +169,18 @@ to_fun(Req, State = #{module := Module}) ->
 -spec to_fun_default(_,#{'module':=atom(), _=>_}) -> any().
 to_fun_default(Req, State) ->
   to_json(Req, State).
+
+
+-spec to_csv(_,#{'module':=atom(), _=>_}) -> any().
+to_csv(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, to_html, Req, State, fun to_csv_default/2).
+
+-spec to_csv_default(_,#{'module':=atom(), _=>_}) -> {_,_,_}.
+to_csv_default(Req, State = #{module := Module,  rstate := RState}) ->
+  #{Module := #{data := Data}} = RState,
+  Title = Module:name(),
+  Body = iolist_to_binary(decirest_handler_lib:to_csv(Title, Data)),
+  {Body, Req, State}.
 
 -spec to_html(_,#{'module':=atom(), _=>_}) -> any().
 to_html(Req, State = #{module := Module}) ->

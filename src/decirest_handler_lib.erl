@@ -19,6 +19,7 @@
   options/2,
   options_default/2,
   maybe_pretty/2,
+  to_csv/2,
   add_default_allow_header/2
 ]).
 
@@ -78,6 +79,26 @@ options(Req, State = #{module := Module}) ->
           add_default_allow_header(Req1, State1)
       end
   end.
+
+to_csv(Name, Map) ->
+  lists:map(fun({K, V}) ->
+    make_csv_row([decirest:t2b(K), ";"], V)
+           end, maps:to_list(Map)).
+
+
+make_csv_row(Prefix, Map) when is_map(Map) ->
+  lists:map(fun({K, V}) ->
+     make_csv_row([Prefix , decirest:t2b(K), ";"], V)
+           end, maps:to_list(Map));
+
+make_csv_row(Prefix, List) when is_list(List) ->
+  lists:map(fun(V) ->
+    make_csv_row(Prefix, V)
+            end, List);
+
+make_csv_row(Prefix, Value) ->
+    [Prefix, decirest:t2b(Value), <<"\n">>] .
+
 
 options_default(_Req, _State) ->
   %% Use cowboys internal return to indicate that the function
