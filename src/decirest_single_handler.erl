@@ -72,14 +72,14 @@ allowed_methods(Req, State = #{module := Module}) ->
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
   Methods0 =
-    case decirest_handler_lib:is_exported(Module, validate_payload, [2,3]) of
+    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
       true ->
         [<<"PUT">>, <<"PATCH">>];
       false ->
         []
     end,
   Methods =
-    case decirest_handler_lib:is_exported(Module, delete_data, 2) of
+    case decirest_handler_lib:is_exported(Module, delete_data, [2, 3]) of
       true ->
         [<<"DELETE">> | Methods0];
       false ->
