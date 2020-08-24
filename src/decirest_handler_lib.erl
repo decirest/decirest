@@ -20,7 +20,9 @@
   options_default/2,
   maybe_pretty/2,
   to_csv/2,
-  add_default_allow_header/2
+  add_default_allow_header/2,
+  from_multi/2,
+  from_multi_default/2
 ]).
 
 is_exported(Module, Function, ArityList) when is_list(ArityList) ->
@@ -97,7 +99,7 @@ make_csv_row(Prefix, List) when is_list(List) ->
             end, List);
 
 make_csv_row(Prefix, Value) ->
-    [Prefix, decirest:t2b(Value), <<"\n">>] .
+    [Prefix, decirest:t2b(Value), <<"\n">>].
 
 
 options_default(_Req, _State) ->
@@ -113,8 +115,18 @@ maybe_pretty(Req, State = #{module := Module}) ->
       [];
     {false, _, _} ->
       []
-   end.
+  end.
 
 add_default_allow_header(Req, #{allowed_methods := Methods} = State) ->
   <<", ", Allow/binary>> = <<<<", ", M/binary>> || M <- Methods>>,
   {ok, cowboy_req:set_resp_header(<<"allow">>, Allow, Req), State}.
+
+from_multi(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, from_multi, Req, State, fun from_multi_default/2).
+
+from_multi_default(Req, State) ->
+  {ok, Headers, Req2} = cowboy_req:read_part(Req),
+  {ok, Data, Req3} = cowboy_req:read_part_body(Req2),
+  {file, Input, Filename, ContentType}
+    = cow_multipart:form_data(Headers),
+  {{Filename, Input, ContentType, Data}, Req3, State}.

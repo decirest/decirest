@@ -15,6 +15,7 @@ replace_and_add/3,
   content_types_accepted_default/2,
   from_fun/2,
   from_fun_default/2,
+  from_multi/2,
   content_types_provided/2,
   to_fun/2,
   to_fun_default/2,
@@ -98,14 +99,21 @@ content_types_accepted_default(Req, State) ->
     {{<<"application">>, <<"javascript">>, '*'}, from_fun}
   ], Req, State}.
 
+from_multi(Req0, State0) ->
+  {File, Req, State} = decirest_handler_lib:from_multi(Req0, State0),
+  handle_body(File, Req, State).
+
 -spec from_fun(_,#{'module':=atom(), _=>_}) -> any().
 from_fun(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
 
 -spec from_fun_default(#{'path':=_, _=>_},#{'module':=atom(), _=>_}) -> {'false' | 'stop' | {'true',binary()},map(),_}.
-from_fun_default(Req0 = #{path := Path}, State = #{module := Module}) ->
+from_fun_default(Req0, State) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
+  handle_body(Body, Req, State).
+
+handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
   PK = decirest:module_pk(Module),
   case decirest_handler_lib:validate_payload(Body, Req, State) of
     {ok, Payload = #{PK := ID}} ->
