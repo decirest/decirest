@@ -12,6 +12,7 @@
   content_types_accepted_default/2,
   from_fun/2,
   from_fun_default/2,
+  from_multi/2,
   content_types_provided/2,
   content_types_provided_default/2,
   to_fun/2,
@@ -101,14 +102,22 @@ content_types_accepted_default(Req, State) ->
     {{<<"application">>, <<"javascript">>, '*'}, from_fun}
   ], Req, State}.
 
+from_multi(Req0, State0) ->
+  {File, Req, State} = decirest_handler_lib:from_multi(Req0, State0),
+  handle_body(File, Req, State).
+
 -spec from_fun(_,#{'module':=atom(), _=>_}) -> any().
 from_fun(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, from_fun, Req, State, fun from_fun_default/2).
 
 -spec from_fun_default(map(),#{'module':=atom(), _=>_}) -> {'false',#{'resp_body':=_, _=>_},#{'module':=atom(), _=>_}} | {'stop',map(),#{'module':=atom(), _=>_}} | {'true',map(),_}.
-from_fun_default(Req0 = #{method := Method}, State = #{module := Module}) ->
+from_fun_default(Req0, State) ->
   % gate 2 here
   {ok, Body, Req} = cowboy_req:read_body(Req0),
+  handle_body(Body, Req, State).
+
+
+handle_body(Body, Req = #{method := Method}, State = #{module := Module}) ->
   MB = case decirest_handler_lib:is_exported(Module, ident, 0) of
          true ->
            cowboy_req:binding(Module:ident(), Req);
