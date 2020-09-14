@@ -11,6 +11,10 @@
 
 %% API
 -export([
+  is_authorized/2,
+  is_authorized_default/2,
+  forbidden/2,
+  forbidden_default/2,
   is_exported/3,
   fetch_data/2,
   delete_data/2,
@@ -24,6 +28,27 @@
   from_multi/2,
   from_multi_default/2
 ]).
+
+-spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
+is_authorized(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, is_authorized, Req, State, fun is_authorized_default/2).
+
+-spec is_authorized_default(_,_) -> any().
+is_authorized_default(Req, State) ->
+  decirest_auth:is_authorized(Req, State).
+
+-spec forbidden(_,#{'module':=atom(), _=>_}) -> any().
+forbidden(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, forbidden, Req, State, fun forbidden_default/2).
+
+-spec forbidden_default(_,map()) -> any().
+forbidden_default(Req, State = #{mro_call := true}) ->
+  decirest_auth:forbidden(Req, State);
+forbidden_default(Req, State = #{module := Module}) ->
+  Continue = fun({false, _, _}) -> true; (_) -> false end,
+  {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
+  {maps:get(Module, Res, true), ReqNew, StateNew}.
+
 
 is_exported(Module, Function, ArityList) when is_list(ArityList) ->
   lists:any(fun(R) -> R end,
