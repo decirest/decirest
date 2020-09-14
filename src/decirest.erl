@@ -3,8 +3,6 @@
   call_mro/3,
   call_mro/4,
   call_mro/5,
-  continue_mro/0,
-  continue_mro/1,
   get_children/1,
   child_fun_factory/1,
   child_url/3,
@@ -29,52 +27,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
-
--spec build_routes_with_state(_,_,#{'module':=_, 'mro':=[any()], _=>_}) -> [{_,_,_}].
-build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) ->
-  case sets:is_element(Mod, sets:from_list(MRO)) of
-    true ->
-      [];
-    false ->
-      lists:flatten(build_routes_path(Mod:paths(), Handler, State#{mro => [Mod | MRO], module => Mod}))
-  end.
-
--spec build_routes_path([any()],_,atom() | #{'module':=atom(), 'mro':=[any(),...], _=>_}) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_path(Paths, Handler, Mod) when is_atom(Mod) ->
-  build_routes_path(Paths, Handler, #{mro => [Mod] , module => Mod}, []);
-build_routes_path(Paths, Handler, State) when is_map(State) ->
-  build_routes_path(Paths, Handler, State, []).
-
--spec build_routes_path([any()],_,_,[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_path([Path | Paths], Handler, State = #{module := Mod}, Res0) ->
-  case Mod:child_of() of
-    [] ->
-      build_routes_path(Paths, Handler, State, [{Path, Handler, State} | Res0]);
-    Parents ->
-      Res = build_routes_parent(Parents, {Path, Handler, State}, Res0),
-      build_routes_path(Paths, Mod, Handler, Res)
-  end;
-build_routes_path([], _Handler, _State, Res) ->
-  Res.
-
--spec build_routes_parent([any()],{_,_,#{'module':=_, _=>_}},[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_parent([Parent | Parents], Cfg = {_, Handler, State}, Res) ->
-  build_routes_parent(Parents, Cfg, [merge_routes(build_routes_with_state(Parent, Handler, State), Cfg) | Res]);
-build_routes_parent([], _Cfg, Res) ->
-  Res.
-
--spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}}) -> [{nonempty_maybe_improper_list(),_,map()}].
-merge_routes(ParentRoutes, Cfg) ->
-  merge_routes(ParentRoutes, Cfg, []).
-
--spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}},[{nonempty_maybe_improper_list(),_,map()}]) ->
-  [{nonempty_maybe_improper_list(),_,map()}].
-merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod}}, Res0) ->
-  {ParentPath, _, PState} = ParentRoute,
-      Res = [{[ParentPath | Path], Handler, PState#{module => Mod}} | Res0],
-      merge_routes(ParentRoutes, Cfg, Res);
-merge_routes([], _Cfg, Res) ->
-  Res.
 
 get_children(Resource) ->
   persistent_term:get({?MODULE, Resource}, []).
@@ -182,12 +134,6 @@ call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0
   end;
 call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
   {Res, Req, State}.
-
-continue_mro() ->
-  continue_mro(true).
-
-continue_mro(Match) ->
-  fun({Match, _, _}) -> true;(_) -> false end.
 
 -spec is_ancestor(atom(), map()) -> true | false.
 is_ancestor(Module, #{mro := MRO}) ->
