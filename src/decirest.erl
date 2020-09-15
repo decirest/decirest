@@ -1,6 +1,5 @@
 -module(decirest).
 -export([
-  call_mro/3,
   call_mro/4,
   call_mro/5,
   get_children/1,
@@ -109,31 +108,38 @@ pretty_path(Path) when is_binary(Path) ->
 pretty_path(Path) when is_list(Path) ->
   pretty_path(iolist_to_binary(Path)).
 
--spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_}) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
-call_mro(Callback, Req, State) ->
-  call_mro(Callback, Req, State, undefined, fun(_) -> true end).
-
 -spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
 call_mro(Callback, Req, State, Default) ->
-  call_mro(Callback, Req, State, Default, fun(_) -> true end).
+  call_mro(Callback, Req, State, Default, default).
 
 -spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_,_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
-call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, Continue) ->
-  {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}),
+call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, ContinueType) ->
+  {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, ContinueType, #{}),
   {Res, NewReq, NewState#{mro_call => false, module => Module}}.
 
 -spec call_mro(maybe_improper_list(),_,_,_,_,_,map()) -> {map(),_,_}.
-call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
+call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, ContinueType, Res0) ->
   {ModRes, Req, State} = CallbackRes = do_callback(Handler, Callback, Req0, State0#{module => Mod}, Default),
   Res = Res0#{Mod => ModRes},
-  case Continue(CallbackRes) of
+  case continue(ContinueType, CallbackRes) of
     true ->
-      call_mro(MRO, Callback, Req, State, Default, Continue, Res);
+      call_mro(MRO, Callback, Req, State, Default, ContinueType, Res);
     false ->
       {Res, Req, State}
   end;
-call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
+call_mro([], _Callback, Req, State, _Default, _ContinueType, Res) ->
   {Res, Req, State}.
+
+continue(always_true, _) ->
+  true;
+continue(inverted, {true, _, _}) ->
+  false;
+continue(inverted, {false, _, _}) ->
+  true;
+continue(default, {true, _, _}) ->
+  true;
+continue(default, {false, _, _}) ->
+  false.
 
 -spec is_ancestor(atom(), map()) -> true | false.
 is_ancestor(Module, #{mro := MRO}) ->
@@ -168,7 +174,17 @@ do_callback(Callback, Req, #{module := Module} = State, Default) ->
 do_callback(Module, Callback, Req, State, Default) ->
   case erlang:function_exported(Module, Callback, 2) of
     true ->
-      Module:Callback(Req, State);
+      case Module:Callback(Req, State) of
+        {run_default, [Req1, State1]} ->
+          case is_function(Default) of
+            true ->
+              erlang:apply(Default, [Req1, State1]);
+            false ->
+              {Default, Req1, State1}
+          end;
+        Res ->
+          Res
+      end;
     false ->
       case is_function(Default) of
         true ->

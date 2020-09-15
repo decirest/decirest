@@ -1,36 +1,24 @@
 -module(decirest_collection_handler).
 -export([
-replace_and_add/3,
   init/2,
   is_authorized/2,
   forbidden/2,
-  allow_missing_post/2,
-  allow_missing_post_default/2,
-  allowed_methods/2,
-  allowed_methods_default/2,
+  allow_missing_post/2, allow_missing_post_default/2,
+  allowed_methods/2, allowed_methods_default/2,
   options/2,
   content_types_accepted/2,
-  content_types_accepted_default/2,
-  from_fun/2,
-  from_fun_default/2,
-  from_multi/2,
   content_types_provided/2,
-  to_fun/2,
-  to_fun_default/2,
-  to_html/2,
-  to_html_default/2,
-  to_json/2,
-  to_json_default/2,
-  resource_exists/2,
-  resource_exists_default/2
+  from_fun/2, from_fun_default/2,
+  from_multi/2,
+  to_fun/2, to_fun_default/2,
+  to_html/2, to_html_default/2,
+  to_json/2, to_json_default/2,
+  resource_exists/2, resource_exists_default/2
 ]).
 
 -spec init(_,map()) -> {'cowboy_rest',_,#{'rstate':=#{}, _=>_}}.
-init(Req, State = #{module := Module}) ->
-  decirest:apply_with_default(Module, init, [Req, State], fun init_default/2).
-
-init_default(Req, State) ->
-  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
+init(Req, State) ->
+  decirest_handler_lib:init_rest(Req, State).
 
 -spec is_authorized(_,#{'module':=atom(), _=>_}) -> any().
 is_authorized(Req, State) ->
@@ -75,15 +63,8 @@ options(Req, State) ->
   decirest_handler_lib:options(Req, State).
 
 -spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
-content_types_accepted(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, content_types_accepted, Req, State, fun content_types_accepted_default/2).
-
--spec content_types_accepted_default(_,_) -> {[{{_,_,_},'from_fun'},...],_,_}.
-content_types_accepted_default(Req, State) ->
-  {[
-    {{<<"application">>, <<"json">>, '*'}, from_fun},
-    {{<<"application">>, <<"javascript">>, '*'}, from_fun}
-  ], Req, State}.
+content_types_accepted(Req, State) ->
+  decirest_handler_lib:content_types_accepted(Req, State).
 
 from_multi(Req0, State0) ->
   {File, Req, State} = decirest_handler_lib:from_multi(Req0, State0),
@@ -228,6 +209,5 @@ resource_exists(Req, State = #{module := Module}) ->
 resource_exists_default(Req, State = #{mro_call := true}) ->
   {true, Req, State};
 resource_exists_default(Req, State = #{module := Module}) ->
-  Continue = fun({true, _, _}) -> true;(_) -> false end,
-  {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true, Continue),
+  {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true),
   {maps:get(Module, Res, false), ReqNew, StateNew}.
