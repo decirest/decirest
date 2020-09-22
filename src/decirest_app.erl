@@ -6,7 +6,7 @@
 
 -spec start(_,_) -> 'ignore' | {'error',_} | {'ok',pid()}.
 start(_Type, _Args) ->
-	Handlers = [decirest_single_handler, decirest_collection_handler, decirest_ws_handler],
+	Handlers = [decirest_single_handler, decirest_collection_handler],
 	[Handler:module_info() || Handler <- Handlers],
 	decirest_sup:start_link().
 
