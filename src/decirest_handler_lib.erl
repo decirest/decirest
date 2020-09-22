@@ -11,6 +11,14 @@
 
 %% API
 -export([
+  init_rest/2,
+  init_rest_default/2,
+  is_authorized/2,
+  is_authorized_default/2,
+  forbidden/2,
+  forbidden_default/2,
+  content_types_accepted/2,
+  content_types_accepted_default/2,
   is_exported/3,
   fetch_data/2,
   delete_data/2,
@@ -24,6 +32,45 @@
   from_multi/2,
   from_multi_default/2
 ]).
+
+-spec init_rest(_, map()) -> {'cowboy_rest', _, #{rstate := #{}}}.
+init_rest(Req, State = #{module := Module}) ->
+  decirest:do_callback(init, Req, State, fun init_rest_default/2).
+
+init_rest_default(Req, State) ->
+  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
+
+-spec is_authorized(_, #{module := atom(), _ => _}) -> any().
+is_authorized(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, is_authorized, Req, State, fun is_authorized_default/2).
+
+-spec is_authorized_default(_,_) -> any().
+is_authorized_default(Req, State) ->
+  decirest_auth:is_authorized(Req, State).
+
+-spec forbidden(_, #{module := atom(), _ => _}) -> any().
+forbidden(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, forbidden, Req, State, fun forbidden_default/2).
+
+-spec forbidden_default(_,map()) -> any().
+forbidden_default(Req, State = #{mro_call := true}) ->
+  decirest_auth:forbidden(Req, State);
+forbidden_default(Req, State = #{module := Module}) ->
+  Continue = inverted,
+  {Res, ReqNew, StateNew} = decirest:call_mro(forbidden, Req, State, false, Continue),
+  {maps:get(Module, Res, true), ReqNew, StateNew}.
+
+-spec content_types_accepted(_,#{'module':=atom(), _=>_}) -> any().
+content_types_accepted(Req, State = #{module := Module}) ->
+  decirest:do_callback(Module, content_types_accepted, Req, State, fun content_types_accepted_default/2).
+
+-spec content_types_accepted_default(_,_) -> {[{{_,_,_},'from_fun'},...],_,_}.
+content_types_accepted_default(Req, State) ->
+  {[
+    {{<<"application">>, <<"json">>, '*'}, from_fun},
+    {{<<"application">>, <<"javascript">>, '*'}, from_fun}
+  ], Req, State}.
+
 
 is_exported(Module, Function, ArityList) when is_list(ArityList) ->
   lists:any(fun(R) -> R end,

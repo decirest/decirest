@@ -1,10 +1,7 @@
 -module(decirest).
 -export([
-  call_mro/3,
   call_mro/4,
   call_mro/5,
-  continue_mro/0,
-  continue_mro/1,
   get_children/1,
   child_fun_factory/1,
   child_url/3,
@@ -29,52 +26,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
-
--spec build_routes_with_state(_,_,#{'module':=_, 'mro':=[any()], _=>_}) -> [{_,_,_}].
-build_routes_with_state(Mod, Handler, State = #{mro := MRO}) when is_map(State) ->
-  case sets:is_element(Mod, sets:from_list(MRO)) of
-    true ->
-      [];
-    false ->
-      lists:flatten(build_routes_path(Mod:paths(), Handler, State#{mro => [Mod | MRO], module => Mod}))
-  end.
-
--spec build_routes_path([any()],_,atom() | #{'module':=atom(), 'mro':=[any(),...], _=>_}) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_path(Paths, Handler, Mod) when is_atom(Mod) ->
-  build_routes_path(Paths, Handler, #{mro => [Mod] , module => Mod}, []);
-build_routes_path(Paths, Handler, State) when is_map(State) ->
-  build_routes_path(Paths, Handler, State, []).
-
--spec build_routes_path([any()],_,_,[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_path([Path | Paths], Handler, State = #{module := Mod}, Res0) ->
-  case Mod:child_of() of
-    [] ->
-      build_routes_path(Paths, Handler, State, [{Path, Handler, State} | Res0]);
-    Parents ->
-      Res = build_routes_parent(Parents, {Path, Handler, State}, Res0),
-      build_routes_path(Paths, Mod, Handler, Res)
-  end;
-build_routes_path([], _Handler, _State, Res) ->
-  Res.
-
--spec build_routes_parent([any()],{_,_,#{'module':=_, _=>_}},[[{_,_,_}] | {_,_,map()}]) -> [[{_,_,_}] | {_,_,map()}].
-build_routes_parent([Parent | Parents], Cfg = {_, Handler, State}, Res) ->
-  build_routes_parent(Parents, Cfg, [merge_routes(build_routes_with_state(Parent, Handler, State), Cfg) | Res]);
-build_routes_parent([], _Cfg, Res) ->
-  Res.
-
--spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}}) -> [{nonempty_maybe_improper_list(),_,map()}].
-merge_routes(ParentRoutes, Cfg) ->
-  merge_routes(ParentRoutes, Cfg, []).
-
--spec merge_routes([{_,_,map()}],{_,_,#{'module':=_, _=>_}},[{nonempty_maybe_improper_list(),_,map()}]) ->
-  [{nonempty_maybe_improper_list(),_,map()}].
-merge_routes([ParentRoute | ParentRoutes], Cfg = {Path, Handler, #{module := Mod}}, Res0) ->
-  {ParentPath, _, PState} = ParentRoute,
-      Res = [{[ParentPath | Path], Handler, PState#{module => Mod}} | Res0],
-      merge_routes(ParentRoutes, Cfg, Res);
-merge_routes([], _Cfg, Res) ->
-  Res.
 
 get_children(Resource) ->
   persistent_term:get({?MODULE, Resource}, []).
@@ -157,37 +108,38 @@ pretty_path(Path) when is_binary(Path) ->
 pretty_path(Path) when is_list(Path) ->
   pretty_path(iolist_to_binary(Path)).
 
--spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_}) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
-call_mro(Callback, Req, State) ->
-  call_mro(Callback, Req, State, undefined, fun(_) -> true end).
-
 -spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
 call_mro(Callback, Req, State, Default) ->
-  call_mro(Callback, Req, State, Default, fun(_) -> true end).
+  call_mro(Callback, Req, State, Default, default).
 
 -spec call_mro(_,_,#{'module':=_, 'mro':=maybe_improper_list(), _=>_},_,_) -> {map(),_,#{'module':=_, 'mro_call':='false', _=>_}}.
-call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, Continue) ->
-  {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, Continue, #{}),
+call_mro(Callback, Req, State = #{mro := MRO, module := Module}, Default, ContinueType) ->
+  {Res, NewReq, NewState} = call_mro(MRO, Callback, Req, State#{mro_call => true}, Default, ContinueType, #{}),
   {Res, NewReq, NewState#{mro_call => false, module => Module}}.
 
 -spec call_mro(maybe_improper_list(),_,_,_,_,_,map()) -> {map(),_,_}.
-call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, Continue, Res0) ->
+call_mro([{Handler, Mod} | MRO], Callback, Req0, State0, Default, ContinueType, Res0) ->
   {ModRes, Req, State} = CallbackRes = do_callback(Handler, Callback, Req0, State0#{module => Mod}, Default),
   Res = Res0#{Mod => ModRes},
-  case Continue(CallbackRes) of
+  case continue(ContinueType, CallbackRes) of
     true ->
-      call_mro(MRO, Callback, Req, State, Default, Continue, Res);
+      call_mro(MRO, Callback, Req, State, Default, ContinueType, Res);
     false ->
       {Res, Req, State}
   end;
-call_mro([], _Callback, Req, State, _Default, _Continue, Res) ->
+call_mro([], _Callback, Req, State, _Default, _ContinueType, Res) ->
   {Res, Req, State}.
 
-continue_mro() ->
-  continue_mro(true).
-
-continue_mro(Match) ->
-  fun({Match, _, _}) -> true;(_) -> false end.
+continue(always_true, _) ->
+  true;
+continue(inverted, {true, _, _}) ->
+  false;
+continue(inverted, {false, _, _}) ->
+  true;
+continue(default, {true, _, _}) ->
+  true;
+continue(default, {false, _, _}) ->
+  false.
 
 -spec is_ancestor(atom(), map()) -> true | false.
 is_ancestor(Module, #{mro := MRO}) ->
@@ -222,7 +174,17 @@ do_callback(Callback, Req, #{module := Module} = State, Default) ->
 do_callback(Module, Callback, Req, State, Default) ->
   case erlang:function_exported(Module, Callback, 2) of
     true ->
-      Module:Callback(Req, State);
+      case Module:Callback(Req, State) of
+        {run_default, [Req1, State1]} ->
+          case is_function(Default) of
+            true ->
+              erlang:apply(Default, [Req1, State1]);
+            false ->
+              {Default, Req1, State1}
+          end;
+        Res ->
+          Res
+      end;
     false ->
       case is_function(Default) of
         true ->
