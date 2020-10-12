@@ -1,10 +1,20 @@
 -module(decirest_validator).
 -export([
+  json_decode/1,
   validate_on_schema/2,
   validate_on_schema/3,
   validate_values/2
 ]).
 
+json_decode(Body) ->
+  try jiffy:decode(Body, [return_maps]) of
+    Term ->
+      {ok, Term}
+    catch
+    _:Error ->
+      lager:info("invalid json ~p ~p", [Error, Body]),
+      {error, <<"invalid json">>}
+  end.
 
 -spec validate_on_schema(_,_) -> {'error',_} | {'ok',_}.
 validate_on_schema(Obj, Schema) ->
