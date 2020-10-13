@@ -50,14 +50,11 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods =
-    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
-      true ->
-        [<<"POST">>];
-      false ->
-        []
-    end,
-  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+  DefaultMethods = [<<"HEAD">>, <<"GET">>, <<"OPTIONS">>],
+  ExportMappingList =
+    [{{validate_payload,  [2, 3]}, [<<"POST">>]}],
+  Methods = decirest_handler_lib:export_to_methods(Module, ExportMappingList, DefaultMethods),
+  {Methods, Req, State}.
 
 options(Req, State) ->
   decirest_handler_lib:options(Req, State).

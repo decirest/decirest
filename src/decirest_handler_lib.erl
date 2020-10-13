@@ -19,6 +19,7 @@
   forbidden_default/2,
   content_types_accepted/2,
   content_types_accepted_default/2,
+  export_to_methods/3,
   is_exported/3,
   fetch_data/2,
   delete_data/2,
@@ -72,6 +73,16 @@ content_types_accepted_default(Req, State) ->
     {{<<"application">>, <<"javascript">>, '*'}, from_fun}
   ], Req, State}.
 
+export_to_methods(Module, ExportMappingList, DefaultMethods) ->
+  lists:foldl(
+    fun({{Function, Arity}, Methods}, Acc) ->
+      case decirest_handler_lib:is_exported(Module, function, Arity) of
+        true ->
+          lists:append([Methods, Acc]);
+        false ->
+          Acc
+      end
+    end, DefaultMethods, ExportMappingList).
 
 is_exported(Module, Function, ArityList) when is_list(ArityList) ->
   lists:any(fun(R) -> R end,

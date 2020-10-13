@@ -45,21 +45,20 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods0 =
-    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
-      true ->
-        [<<"PUT">>, <<"PATCH">>];
-      false ->
-        []
-    end,
-  Methods =
-    case decirest_handler_lib:is_exported(Module, delete_data, [2, 3]) of
-      true ->
-        [<<"DELETE">> | Methods0];
-      false ->
-        Methods0
-    end,
-  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+
+  DefaultMethods = [<<"HEAD">>, <<"GET">>, <<"OPTIONS">>],
+
+  ExportMappingList =
+    [{{validate_payload,  [2, 3]}, [<<"PUT">>, <<"PATCH">>]},
+    {{delete_data,        [2, 3]}, [<<"DELETE">> ]},
+    {{action_schema,      [0]},     [<<"POST">>]}],
+
+  Methods = decirest_handler_lib:export_to_methods(Module, ExportMappingList, DefaultMethods),
+
+  {Methods, Req, State}.
+
+is_exported(Module, {Function, Arity}) ->
+  decirest_handler_lib:is_exported(Module, function, Arity).
 
 options(Req, State) ->
   decirest_handler_lib:options(Req, State).
