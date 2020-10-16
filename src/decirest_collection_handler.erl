@@ -100,10 +100,7 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
           {stop, ReqNew, NewState}
       end;
     {error, Errors} ->
-      lager:critical("errors ~p", [Errors]),
-      RespBody = jiffy:encode(Errors, [force_utf8]),
-      ReqNew = cowboy_req:set_resp_body(RespBody, Req),
-      {false, ReqNew, State}
+      decirest_handler_lib:return_error(Errors, Req, State)
   end.
 
 -spec content_types_provided(_,#{'module':=atom(), _=>_}) -> any().

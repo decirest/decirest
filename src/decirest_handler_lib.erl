@@ -25,7 +25,9 @@
   delete_data/2,
   validate_action/3,
   validate_payload/3,
+  return_error/3,
   persist_data/3,
+  perform_action/3,
   options/2,
   options_default/2,
   maybe_pretty/2,
@@ -76,7 +78,7 @@ content_types_accepted_default(Req, State) ->
 export_to_methods(Module, ExportMappingList, DefaultMethods) ->
   lists:foldl(
     fun({{Function, Arity}, Methods}, Acc) ->
-      case decirest_handler_lib:is_exported(Module, function, Arity) of
+      case decirest_handler_lib:is_exported(Module, Function, Arity) of
         true ->
           lists:append([Methods, Acc]);
         false ->
@@ -111,7 +113,7 @@ delete_data(Req, State = #{module := Module}) ->
   end.
 
 validate_action(Body, Req, State) ->
-  validate_payload(action, Body, Req, State).
+  validate_action_parts(Body, Req, State).
 
 validate_payload(Body, Req, State) ->
   validate_payload(normal, Body, Req, State).
@@ -127,12 +129,7 @@ validate_payload(Type, Body, Req, State = #{module := Module}) ->
         false ->
           %% Gives the call back the posibility to override parts of
           %% the validate code and let decirest handle the rest
-          case Type of
-            normal ->
-              validate_parts(Body, Req, State);
-            action ->
-              validate_action_parts(Body, Req, State)
-          end
+          validate_parts(Body, Req, State)
       end
   end.
 
@@ -212,6 +209,12 @@ unwrap_epipe({ok, {Res, Req, State}}) ->
 unwrap_epipe({error, _Fun, Error, _}) ->
   {error, Error}.
 
+return_error(Errors, Req, State) ->
+  lager:critical("errors ~p", [Errors]),
+  RespBody = jiffy:encode(Errors, [force_utf8]),
+  ReqNew = cowboy_req:set_resp_body(RespBody, Req),
+  {false, ReqNew, State}.
+
 -spec persist_data(binary(), map(), #{'module' := atom(), _ => _}) -> any().
 persist_data(Body, Req, State = #{module := Module}) ->
   case is_exported(Module, persist_data, 3) of
@@ -219,6 +222,14 @@ persist_data(Body, Req, State = #{module := Module}) ->
       Module:persist_data(Body, Req, State);
     false ->
       Module:persist_data(Body, State)
+  end.
+
+perform_action(Body, Req, State = #{module := Module}) ->
+  case is_exported(Module, perform_action, 3) of
+    true ->
+      Module:perform_action(Body, Req, State);
+    false ->
+      Module:perform_action(Body, State)
   end.
 
 options(Req, State = #{module := Module}) ->

@@ -57,9 +57,6 @@ allowed_methods_default(Req, State = #{module := Module}) ->
 
   {Methods, Req, State}.
 
-is_exported(Module, {Function, Arity}) ->
-  decirest_handler_lib:is_exported(Module, function, Arity).
-
 options(Req, State) ->
   decirest_handler_lib:options(Req, State).
 
@@ -83,12 +80,26 @@ from_fun_default(Req0, State) ->
 
 
 handle_body(Body, Req = #{method := Method}, State = #{module := Module}) ->
-  MB = case decirest_handler_lib:is_exported(Module, ident, 0) of
-         true ->
-           cowboy_req:binding(Module:ident(), Req);
-         false ->
-           undefined
-       end,
+  %% We need to check action_schema to not break legacy behavior
+  %% eventuallu post on single should only be action
+  case {Method, decirest_handler_lib:is_exported(Module, action_schema, 0)} of
+    {<<"POST">>, true} ->
+      validate_action(Body, Req, State);
+    _ ->
+      %% Legacy take all others for now
+      validate_payload(Body, Req, State)
+  end.
+
+validate_action(Body, Req, State) ->
+  case decirest_handler_lib:validate_action(Body, Req, State) of
+    {ok, Payload} ->
+      decirest_handler_lib:perform_action(Payload, Req, State);
+    {error, Error} ->
+      decirest_handler_lib:return_error(Error, Req, State)
+  end.
+
+validate_payload(Body, Req = #{method := Method}, State) ->
+  MB = get_module_binding(Req, State),
   case decirest_handler_lib:validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
@@ -108,10 +119,15 @@ handle_body(Body, Req = #{method := Method}, State = #{module := Module}) ->
     {stop, NewReq, NewState} ->
       {stop, NewReq, NewState};
     {error, Errors} ->
-      lager:critical("errors ~p", [Errors]),
-      RespBody = jiffy:encode(Errors, [force_utf8]),
-      ReqNew = cowboy_req:set_resp_body(RespBody, Req),
-      {false, ReqNew, State}
+      decirest_handler_lib:return_error(Errors, Req, State)
+  end.
+
+get_module_binding(Req, #{module := Module}) ->
+  case decirest_handler_lib:is_exported(Module, ident, 0) of
+    true ->
+      cowboy_req:binding(Module:ident(), Req);
+    false ->
+      undefined
   end.
 
 -spec delete_resource(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
