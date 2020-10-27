@@ -4,7 +4,7 @@ Filled arrows are always called.
 Dotted lines are called if exported
 
 
-###GET
+### GET
 ```mermaid
 sequenceDiagram
 participant Cowboy
@@ -30,7 +30,7 @@ Cowboy ->> Decirest: to_json
 Decirest --> resource: to_json
 ```
 
-###POST PATCH
+### POST PATCH
 start with a complete GET sequence except for to_json
 ```mermaid
 sequenceDiagram

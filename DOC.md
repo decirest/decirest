@@ -15,7 +15,7 @@ name() ->
 Indicate that the resource should be a child of the company resource
 ```
 child_of() ->
-  [inapi_company_r].
+  [user_r].
 ```
 
 #### `ident/0`
