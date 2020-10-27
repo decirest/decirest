@@ -33,11 +33,29 @@
             color: #01447e;
             text-decoration: underline;
         }
+
+
+        /* Add a color to all links inside the list */
+        ul.breadcrumb div a {
+            color: #0275d8;
+            text-decoration: none;
+            text-align: right;
+            float: right;
+        }
+
+        /* Add a color on mouse-over */
+        ul.breadcrumb div a:hover {
+            color: #01447e;
+            text-decoration: underline;
+            text-align: right;
+            float: right;
+        }
+
     </style>
 </head>
 <body>
 <nav>
-    <div id="nav"><breadcrumb-component v-bind:paths="paths"></breadcrumb-component></div>
+    <div id="nav"><breadcrumb-component v-bind:doc_path="doc_path" v-bind:paths="paths"></breadcrumb-component></div> 
 </nav>
 <section class="data">
     <h1>Data: {{ title }}</h1>
