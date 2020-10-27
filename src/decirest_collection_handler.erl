@@ -153,7 +153,7 @@ fetch_data(Req, #{module := Module} = State) ->
     {ok, D} ->
       D;
     {error, Msg} ->
-      lager:debug("got exception when fetching data ~p", [Msg]),
+      lager:debug("got exception when fetching data ~p ~p", [Module, Msg]),
       []
   end.
 

@@ -75,6 +75,16 @@ content_types_accepted_default(Req, State) ->
     {{<<"application">>, <<"javascript">>, '*'}, from_fun}
   ], Req, State}.
 
+%%------------------------------------------------------------------------------
+%% @doc export_to_methods
+%% Function to map exported function to http methods
+%%
+%% If the call back module exports validate_payload we will add POST as allowed method
+%% [{{validate_payload,  [2, 3]}, [<<"POST">>]}]
+%%
+%% @end
+%%------------------------------------------------------------------------------
+
 export_to_methods(Module, ExportMappingList, DefaultMethods) ->
   lists:foldl(
     fun({{Function, Arity}, Methods}, Acc) ->
@@ -138,7 +148,7 @@ validate_parts(Body, Req, State) ->
     [
       {validate_bin, fun validate_bin/1},
       {to_term, fun to_term/1},
-      {validate_on_schema, validate_on_schema(schema)},
+      {validate_on_schema, validate_on_schema_fun(schema)},
       {validate_term, fun validate_term/1}
     ],
   unwrap_epipe(epipe:run(ValidateCalls, {Body, Req, State})).
@@ -147,7 +157,7 @@ validate_action_parts(Body, Req, State) ->
   ValidateCalls=
     [
       {to_term, fun to_term/1},
-      {validate_on_schema, validate_on_schema(action_schema)},
+      {validate_on_schema, validate_on_schema_fun(action_schema)},
       {validate_action, fun validate_action/1}
     ],
   unwrap_epipe(epipe:run(ValidateCalls, {Body, Req, State})).
@@ -167,7 +177,7 @@ to_term({Body, Req, State = #{module := Module}}) ->
 to_term_default(Body, Req, State) ->
   decirest_validator:json_decode(Body).
 
-validate_on_schema(SchemaCallback) ->
+validate_on_schema_fun(SchemaCallback) ->
   fun({Term, Req, State = #{module := Module}}) ->
     Res =
       case is_exported(Module, SchemaCallback, 0) of
