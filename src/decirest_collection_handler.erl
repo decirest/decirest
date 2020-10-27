@@ -52,7 +52,7 @@ allowed_methods(Req, State = #{module := Module}) ->
 allowed_methods_default(Req, State = #{module := Module}) ->
   DefaultMethods = [<<"HEAD">>, <<"GET">>, <<"OPTIONS">>],
   ExportMappingList =
-    [{{validate_payload,  [2, 3]}, [<<"POST">>]}],
+    [{{persist_data,  [2, 3]}, [<<"POST">>]}],
   Methods = decirest_handler_lib:export_to_methods(Module, ExportMappingList, DefaultMethods),
   {Methods, Req, State}.
 
