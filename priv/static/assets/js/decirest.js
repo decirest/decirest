@@ -58,19 +58,24 @@ window.decirest_init = function (){
             '<li v-for="p in paths">' +
             '<a :href="p.href">{{p.name}}</a>' +
             '</li>' +
+            '<a :href="doc_path.href" style="float: right;">{{doc_path.name}}</a>' +
         '</ul>',
-        props: ['paths']
+        props: ['paths', 'doc_path']
     });
+
+
     var paths = location.pathname.split('/');
     var breadcrumbs = [];
     for (var i = 2; i <= paths.length - 1; i++){
         breadcrumbs.push({name: paths[i], href: paths.slice(0,i + 1).join('/')})
     }
+    var doc_url = paths.slice(1, paths.length).join('/');
     console.log(breadcrumbs);
     var nav_app = new Vue({
         el: '#nav',
         data: {
-            paths: breadcrumbs
+            paths: breadcrumbs,
+            doc_path: {href: "/apidoc/path/"+doc_url, name: "Documentation for " + doc_url}
         }
     })
 };

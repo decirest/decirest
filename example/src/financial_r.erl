@@ -17,7 +17,7 @@ fetch_data(_, _) -> {ok, [#{<<"something">> => <<"clever">>}]}.
 
 forbidden(Req, State) ->
   % this resources is only allowed in the back office
-  case decirest:is_ansestor(bo_r, State) of
+  case decirest:is_ancestor(bo_r, State) of
     true ->
       lager:critical("~n~n allow it ~p~n~n", [State]),
       {false, Req, State};

@@ -50,14 +50,11 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods =
-    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
-      true ->
-        [<<"POST">>];
-      false ->
-        []
-    end,
-  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+  DefaultMethods = [<<"HEAD">>, <<"GET">>, <<"OPTIONS">>],
+  ExportMappingList =
+    [{{persist_data,  [2, 3]}, [<<"POST">>]}],
+  Methods = decirest_handler_lib:export_to_methods(Module, ExportMappingList, DefaultMethods),
+  {Methods, Req, State}.
 
 options(Req, State) ->
   decirest_handler_lib:options(Req, State).
@@ -103,10 +100,7 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
           {stop, ReqNew, NewState}
       end;
     {error, Errors} ->
-      lager:critical("errors ~p", [Errors]),
-      RespBody = jiffy:encode(Errors, [force_utf8]),
-      ReqNew = cowboy_req:set_resp_body(RespBody, Req),
-      {false, ReqNew, State}
+      decirest_handler_lib:return_error(Errors, Req, State)
   end.
 
 -spec content_types_provided(_,#{'module':=atom(), _=>_}) -> any().
@@ -159,7 +153,7 @@ fetch_data(Req, #{module := Module} = State) ->
     {ok, D} ->
       D;
     {error, Msg} ->
-      lager:debug("got exception when fetching data ~p", [Msg]),
+      lager:debug("got exception when fetching data ~p ~p", [Module, Msg]),
       []
   end.
 

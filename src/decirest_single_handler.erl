@@ -45,21 +45,19 @@ allowed_methods(Req, State = #{module := Module}) ->
 
 -spec allowed_methods_default(_,#{'module':=atom(), _=>_}) -> {[<<_:24,_:_*8>>,...],_,#{'module':=atom(), _=>_}}.
 allowed_methods_default(Req, State = #{module := Module}) ->
-  Methods0 =
-    case decirest_handler_lib:is_exported(Module, validate_payload, [2, 3]) of
-      true ->
-        [<<"PUT">>, <<"PATCH">>];
-      false ->
-        []
-    end,
-  Methods =
-    case decirest_handler_lib:is_exported(Module, delete_data, [2, 3]) of
-      true ->
-        [<<"DELETE">> | Methods0];
-      false ->
-        Methods0
-    end,
-  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">> | Methods], Req, State}.
+
+  DefaultMethods = [<<"HEAD">>, <<"GET">>, <<"OPTIONS">>],
+
+  ExportMappingList =
+    [
+      {{persist_data,  [2, 3]}, [<<"PUT">>, <<"PATCH">>]},
+      {{delete_data,   [2, 3]}, [<<"DELETE">> ]},
+      {{action_schema, [0]},    [<<"POST">>]}
+    ],
+
+  Methods = decirest_handler_lib:export_to_methods(Module, ExportMappingList, DefaultMethods),
+
+  {Methods, Req, State}.
 
 options(Req, State) ->
   decirest_handler_lib:options(Req, State).
@@ -84,12 +82,35 @@ from_fun_default(Req0, State) ->
 
 
 handle_body(Body, Req = #{method := Method}, State = #{module := Module}) ->
-  MB = case decirest_handler_lib:is_exported(Module, ident, 0) of
-         true ->
-           cowboy_req:binding(Module:ident(), Req);
-         false ->
-           undefined
-       end,
+  %% We need to check action_schema to not break legacy behavior
+  %% eventuallu post on single should only be action
+  case {Method, decirest_handler_lib:is_exported(Module, action_schema, 0)} of
+    {<<"POST">>, true} ->
+      validate_action(Body, Req, State);
+    _ ->
+      %% Legacy take all others for now
+      validate_payload(Body, Req, State)
+  end.
+
+validate_action(Body, Req, State) ->
+  case decirest_handler_lib:validate_action(Body, Req, State) of
+    {ok, Payload} ->
+      case decirest_handler_lib:perform_action(Payload, Req, State) of
+        ok ->
+          {true, Req, State};
+        {error, Reason} ->
+          {false, Req, State};
+        {ok, ResBody} ->
+          RespBody = jiffy:encode(ResBody, [force_utf8]),
+          ReqNew = cowboy_req:set_resp_body(RespBody, Req),
+          {true, ReqNew, State}
+      end;
+        {error, Error} ->
+      decirest_handler_lib:return_error(Error, Req, State)
+  end.
+
+validate_payload(Body, Req = #{method := Method}, State) ->
+  MB = get_module_binding(Req, State),
   case decirest_handler_lib:validate_payload(Body, Req, State#{method => Method, module_binding => MB}) of
     {ok, Payload} ->
       % gate3 auth here
@@ -109,10 +130,15 @@ handle_body(Body, Req = #{method := Method}, State = #{module := Module}) ->
     {stop, NewReq, NewState} ->
       {stop, NewReq, NewState};
     {error, Errors} ->
-      lager:critical("errors ~p", [Errors]),
-      RespBody = jiffy:encode(Errors, [force_utf8]),
-      ReqNew = cowboy_req:set_resp_body(RespBody, Req),
-      {false, ReqNew, State}
+      decirest_handler_lib:return_error(Errors, Req, State)
+  end.
+
+get_module_binding(Req, #{module := Module}) ->
+  case decirest_handler_lib:is_exported(Module, ident, 0) of
+    true ->
+      cowboy_req:binding(Module:ident(), Req);
+    false ->
+      undefined
   end.
 
 -spec delete_resource(map(), #{module := atom(), _ => _}) -> {true | false, map(), map()}.
@@ -200,7 +226,7 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
     {ok, Data} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
     {error, Reason} ->
-      lager:debug("got exception when fetching data ~p", [Reason]),
+      lager:debug("got exception when fetching data ~p ~p", [Module, Reason]),
       {false, Req, State};
     {StatusCode, NewState} when is_number(StatusCode) ->
       ReqNew = cowboy_req:reply(StatusCode, Req),
