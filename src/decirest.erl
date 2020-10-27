@@ -94,8 +94,8 @@ child_urls_map([Child | Children], Req, State, Map) ->
     {true, _, _} ->
       child_urls_map(Children, Req, State, Map)
   end;
-child_urls_map([], #{path := Path} = Req, _State, Map) ->
-  Map#{<<"doc_url">> => pretty_path([<<"/apidoc/path">>, Path])}.
+child_urls_map([], _Req, _State, Map) ->
+  Map.
 
 -spec pretty_path(binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | [])) -> binary().
 pretty_path(Path) when is_binary(Path) ->
