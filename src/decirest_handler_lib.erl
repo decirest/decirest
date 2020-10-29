@@ -34,7 +34,8 @@
   to_csv/2,
   add_default_allow_header/2,
   from_multi/2,
-  from_multi_default/2
+  from_multi_default/2,
+  render/3
 ]).
 
 -spec init_rest(_, map()) -> {'cowboy_rest', _, #{rstate := #{}}}.
@@ -303,3 +304,13 @@ from_multi_default(Req, State) ->
   {file, Input, Filename, ContentType}
     = cow_multipart:form_data(Headers),
   {{Filename, Input, ContentType, Data}, Req3, State}.
+
+render(Req, Json, Context) ->
+  case cowboy_req:binding(render, Req, true) of
+    false ->
+      NewReq = cowboy_req:set_resp_header(<<"content-type">>,  <<"application/json">>, Req),
+      {ok, NewReq, Json};
+    _ ->
+      {ok, Body} = std_response_html_dtl:render(Context),
+      {ok, Req, Body}
+  end.

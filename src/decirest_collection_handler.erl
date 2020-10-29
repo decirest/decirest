@@ -135,8 +135,8 @@ to_html_default(Req, State = #{module := Module}) ->
     {title, Title},
     {collection_data, Json}
   ],
-  {ok, Body} = std_response_html_dtl:render(Context),
-  {Body, ReqNew, StateNew}.
+  {ok, ReqNew1, Body} = decirest_handler_lib:render(Req, Json, Context),
+  {Body, ReqNew1, StateNew}.
 
 -spec to_json(_,#{'module':=atom(), _=>_}) -> any().
 to_json(Req, State = #{module := Module}) ->
@@ -145,8 +145,26 @@ to_json(Req, State = #{module := Module}) ->
 to_json_default(Req, State) ->
   Data0 = fetch_data(Req, State),
   Data = filter_data_on_pk(Data0, Req, State),
+  Data1 = maybe_sort(Req, Data),
   PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
-  {jiffy:encode(Data, [force_utf8] ++ PrettyConfig), Req, State}.
+  {jiffy:encode(Data1, [force_utf8] ++ PrettyConfig), Req, State}.
+
+maybe_sort(Req, Data) ->
+  case cowboy_req:binding(sort_by, Req, undefined) of
+    undefined ->
+      Data;
+    Key ->
+      key_sort(Key, Data)
+  end.
+
+key_sort(Key, MapList) ->
+  lists:sort(
+    fun(Map1, Map2) ->
+      maps:get(Key, Map1, undefined) < maps:get(Key, Map2, undefined)
+    end,
+    MapList
+  ).
+
 
 fetch_data(Req, #{module := Module} = State) ->
   case Module:fetch_data(cowboy_req:bindings(Req), State) of
