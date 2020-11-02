@@ -20,7 +20,7 @@
 ]).
 
 
-get_bindings(Req, #{module := Module} = State) ->
+get_bindings(Req, #{module := Module} = _State) ->
   Bindings = cowboy_req:bindings(Req),
   DefaultQueryMatch =
     [

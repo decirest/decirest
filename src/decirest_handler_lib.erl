@@ -39,7 +39,7 @@
 ]).
 
 -spec init_rest(_, map()) -> {'cowboy_rest', _, #{rstate := #{}}}.
-init_rest(Req, State = #{module := Module}) ->
+init_rest(Req, State) ->
   decirest:do_callback(init, Req, State, fun init_rest_default/2).
 
 init_rest_default(Req, State) ->
@@ -168,14 +168,14 @@ validate_bin({Body, Req, State = #{module := Module}}) ->
   Res = decirest:apply_with_default(Module, validate_bin, [Body, Req, State], fun validate_bin_default/3),
   epipe_resp(Res, Req, State).
 
-validate_bin_default(Body, Req, State) ->
+validate_bin_default(Body, _Req, _State) ->
   {ok, Body}.
 
 to_term({Body, Req, State = #{module := Module}}) ->
   Res = decirest:apply_with_default(Module, to_term, [Body, Req, State], fun to_term_default/3),
   epipe_resp(Res, Req, State).
 
-to_term_default(Body, Req, State) ->
+to_term_default(Body, _Req, _State) ->
   decirest_validator:json_decode(Body).
 
 validate_on_schema_fun(SchemaCallback) ->
@@ -215,7 +215,7 @@ epipe_resp({ok, Res}, Req, State) ->
 epipe_resp(Error, _Req, _State) ->
   Error.
 
-unwrap_epipe({ok, {Res, Req, State}}) ->
+unwrap_epipe({ok, {Res, _Req, _State}}) ->
   {ok, Res};
 unwrap_epipe({error, _Fun, Error, _}) ->
   {error, Error}.
@@ -256,7 +256,7 @@ options(Req, State = #{module := Module}) ->
       end
   end.
 
-to_csv(Name, Map) ->
+to_csv(_Name, Map) ->
   lists:map(fun({K, V}) ->
     make_csv_row([decirest:t2b(K), ";"], V)
             end, maps:to_list(Map)).
