@@ -174,7 +174,7 @@ to_fun_default(Req, State) ->
 
 -spec to_csv(_,#{'module':=atom(), _=>_}) -> any().
 to_csv(Req, State = #{module := Module}) ->
-  decirest:do_callback(Module, to_html, Req, State, fun to_csv_default/2).
+  decirest:do_callback(Module, to_csv, Req, State, fun to_csv_default/2).
 
 -spec to_csv_default(_,#{'module':=atom(), _=>_}) -> {_,_,_}.
 to_csv_default(Req, State = #{module := Module,  rstate := RState}) ->
