@@ -29,7 +29,6 @@ fetch_doc_by_path(Ref, Req, State) ->
   #{env := Env} = ranch:get_protocol_options(Ref),
   case cowboy_router:execute(Req, Env) of
     {ok, _ReqNew, _EnvNew = #{handler := H, handler_opts := HO}} ->
-      %lager:critical("found it, going forward, H = ~p, HO = ~p", [H, HO]),
       make_doc_map(Ref, H, HO, Req, State);
     Res ->
       lager:critical("stop, ~p", [Res]),

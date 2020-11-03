@@ -15,33 +15,29 @@
 
 %% API
 -export([
-  get_bindings/2]).
+  get_bindings/2,
+  bool/2
+]).
 
 
-get_bindings(Req, #{module := Module} = State) ->
+get_bindings(Req, #{module := Module} = _State) ->
   Bindings = cowboy_req:bindings(Req),
-  case erlang:function_exported(Module, query_bindings, 0) of
-    false ->
-      maybe_get_query_matches(Req, State);
-    true ->
-      QueryMatch = Module:query_bindings(),
-      QueryBindings = cowboy_req:match_qs(QueryMatch, Req),
-      MergedBindings = maps:merge(QueryBindings, Bindings),
-      check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
-      MergedBindings
-  end.
-
-maybe_get_query_matches(Req, #{module := Module} = State) ->
-  Bindings = cowboy_req:bindings(Req),
-  case erlang:function_exported(Module, get_query_bindings, 2) of
-    true ->
-      QueryBindings = Module:get_query_bindings(Req, State),
-      MergedBindings = maps:merge(QueryBindings, Bindings),
-      check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
-      MergedBindings;
-    false ->
-      Bindings
-  end.
+  DefaultQueryMatch =
+    [
+      {sort_by, [], undefined},
+      {render, fun decirest_query:bool/2, undefined}
+    ],
+  QueryMatch =
+    case erlang:function_exported(Module, query_bindings, 0) of
+      false ->
+        [];
+      true ->
+        Module:query_bindings()
+    end,
+  QueryBindings = cowboy_req:match_qs(QueryMatch ++ DefaultQueryMatch, Req),
+  MergedBindings = maps:merge(QueryBindings, Bindings),
+  check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings),
+  MergedBindings.
 
 check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings) ->
   case maps:size(QueryBindings) + maps:size(Bindings) == maps:size(MergedBindings) of
@@ -53,6 +49,21 @@ check_for_duplicate_bindings(QueryBindings, Bindings, MergedBindings) ->
       DuplicateBindings = sets:to_list(sets:intersection(QueryBindingsSet, BindingsSet)),
       lager:error("Same binding was used for both url binding and query_bindings: ~p", [DuplicateBindings])
   end.
+
+bool(forward, Value) ->
+  case string:lowercase(Value) of
+    <<"true">> ->
+      {ok, true};
+    _ ->
+      {ok, false}  % default if any other than <<"true">> instead of getting a 400 if not <<"true">> or <<"false">>
+  end;
+bool(reverse, Value) ->
+  case is_boolean(Value) of
+    true -> atom_to_binary(Value, utf8);
+    _ -> {error, not_a_boolean}
+  end;
+bool(format_error, {not_a_boolean, Value}) ->
+  io_lib:format("The value ~p is not a boolean.", [Value]).
 
 
 -ifdef(TEST).

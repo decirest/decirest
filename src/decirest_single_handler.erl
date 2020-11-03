@@ -195,8 +195,8 @@ to_html_default(Req, State = #{module := Module}) ->
     {title, Title},
     {single_data, Json}
   ],
-  {ok, Body} = std_response_html_dtl:render(Context),
-  {Body, ReqNew, StateNew}.
+  {ok, ReqNew1, Body} = decirest_handler_lib:render(Req, Json, Context),
+  {Body, ReqNew1, StateNew}.
 
 -spec to_json(_,#{'module':=atom(), _=>_}) -> any().
 to_json(Req, State = #{module := Module}) ->

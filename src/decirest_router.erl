@@ -98,7 +98,7 @@ build_route(Module, Options) ->
         [] ->
           merge_with_parents(Parents, Paths, Options, []);
         Missing ->
-          lager:info("Parents missing in decirest modules ~w for ~w", [Missing, Module]),
+          lager:error("Parents missing in decirest modules ~w for ~w", [Missing, Module]),
           merge_with_parents(Parents, Paths, Options, [])
       end
   end.
