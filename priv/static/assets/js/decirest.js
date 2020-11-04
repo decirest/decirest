@@ -70,12 +70,11 @@ window.decirest_init = function (){
         breadcrumbs.push({name: paths[i], href: paths.slice(0,i + 1).join('/')})
     }
     var doc_url = paths.slice(1, paths.length).join('/');
-    console.log(breadcrumbs);
     var nav_app = new Vue({
         el: '#nav',
         data: {
             paths: breadcrumbs,
-            doc_path: {href: "/apidoc/path/"+doc_url, name: "Documentation for " + doc_url}
+            doc_path: {href: "/apidoc/path/"+doc_url, name: "Documentation"}
         }
     })
 };
