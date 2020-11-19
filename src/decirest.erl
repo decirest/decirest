@@ -19,8 +19,7 @@
   get_data/3,
   get_data/4,
   change_module/2,
-  get_handler/1,
-  get_handler/2
+  get_handler/1
 ]).
 
 -ifdef(TEST).
@@ -274,22 +273,9 @@ change_module(Module, #{mro := MRO} = State) ->
 -spec get_handler(State) -> Handler when
   State :: map(),  % Decirest state
   Handler :: decirest_single_handler | decirest_collection_handler.
-get_handler(#{module := Module} = State) ->
-  get_handler(Module, State).
-
-
--spec get_handler(Module, State) -> Handler when
-  Module :: atom(),
-  State :: map(),
-  Handler :: decirest_single_handler | decirest_collection_handler | module_dont_exist_in_state.
-get_handler(Module, State) ->
-  #{mro := MRO} = State,
-  case lists:keyfind(Module, 2, MRO) of
-    false ->
-      module_dont_exist_in_state;
-    {Handler, Module} ->
-      Handler
-  end.
+get_handler(#{module := Module, mro := MRO} = _State) ->
+  {Handler, Module} = lists:last(MRO),
+  Handler.
 
 
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
