@@ -14,6 +14,7 @@
   pretty_path/1,
   get_parent/1,
   get_parent_pk/1,
+  main_module/1,
   t2b/1,
   get_data/2,
   get_data/3,
@@ -158,6 +159,9 @@ get_parent([{_, _}, {Handler, Parent} | Tail], CurrentModule) ->
 get_parent_pk(State) ->
   Parent = get_parent(State),
   {Parent, module_pk(Parent)}.
+
+main_module(State) ->
+  maps:get(main_module, State).
 
 -spec module_pk(atom()) -> any().
 module_pk(Module) ->
