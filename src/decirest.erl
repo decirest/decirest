@@ -1,5 +1,7 @@
 -module(decirest).
 -export([
+  start/4,
+  get_modules/1,
   call_mro/4,
   call_mro/5,
   get_children/1,
@@ -24,10 +26,34 @@
 ]).
 
 -ifdef(TEST).
-
 -include_lib("eunit/include/eunit.hrl").
-
 -endif.
+
+
+-spec start(Ref, ModulesIn, DecirestOpt, TransportOpt) -> Res when
+  Ref :: ranch:ref(),
+  ModulesIn :: [atom()],
+  DecirestOpt :: map(),
+  TransportOpt :: ranch:opts(),
+  Res :: {ok, pid()} | {error, any()}.
+start(Ref, ModulesIn, DecirestOpt, TransportOpt) ->
+  Modules = [decirest_doc_resource | ModulesIn],
+    Routes =
+    decirest_router:build_routes(Ref, Modules, DecirestOpt),
+  Dispatch = cowboy_router:compile(Routes),
+  store_modules(Ref, Modules),
+  cowboy:start_clear(
+    Ref,
+    TransportOpt,
+    #{env => #{dispatch => Dispatch},
+      stream_handlers => [cowboy_compress_h, cowboy_stream_h]}
+  ).
+
+store_modules(Ref, Modules) ->
+  ok = persistent_term:put({?MODULE, Ref}, Modules).
+
+get_modules(Ref) ->
+  persistent_term:get({?MODULE, Ref}).
 
 get_children(Resource) ->
   persistent_term:get({?MODULE, Resource}, []).
