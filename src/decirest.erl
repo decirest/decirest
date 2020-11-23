@@ -18,7 +18,8 @@
   get_data/2,
   get_data/3,
   get_data/4,
-  change_module/2
+  change_module/2,
+  get_handler/1
 ]).
 
 -ifdef(TEST).
@@ -267,6 +268,15 @@ get_data(Key, Module, State, Default) ->
 change_module(Module, #{mro := MRO} = State) ->
   [{Handler, _OldModule} | Tail] = lists:reverse(MRO),
   State#{module => Module, main_module => Module, mro => lists:reverse([{Handler, Module}| Tail])}.
+
+
+-spec get_handler(State) -> Handler when
+  State :: map(),  % Decirest state
+  Handler :: decirest_single_handler | decirest_collection_handler.
+get_handler(#{module := Module, mro := MRO} = _State) ->
+  {Handler, Module} = lists:last(MRO),
+  Handler.
+
 
 -spec t2b(atom() | binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | []) | integer()) -> binary().
 t2b(V) when is_integer(V) -> integer_to_binary(V);
