@@ -272,7 +272,7 @@ get_data(Key, Module, State, Default) ->
     #{Key := Val} ->
       Val;
     #{} = Data ->
-      case proplists:get_value(inu:t2b(Key), [{inu:t2b(K), K} || K <- maps:keys(Data)]) of
+      case proplists:get_value(t2b(Key), [{t2b(K), K} || K <- maps:keys(Data)]) of
         undefined ->
           Default;
         RawKey ->
