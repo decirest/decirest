@@ -60,7 +60,7 @@ fetch_info(Module, Handler, HandlerOpts, Req, State0) ->
     allowed_methods => AM,
     content_types_allowed => fix_content_type(CTA),
     content_types_provided => fix_content_type(CTP),
-    children => ChildUrls
+    children => maps:values(ChildUrls)
   }.
 
 get_all_model_routes(Ref) ->
