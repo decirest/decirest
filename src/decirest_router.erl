@@ -1,7 +1,7 @@
 -module(decirest_router).
 -export([
-  build_routes/1,
   build_routes/2,
+  build_routes/3,
   get_all_active_routes/1,
   get_all_active_routes/2
 ]).
@@ -42,13 +42,11 @@ prep_paths([PathDef | Paths], Options = #{pp_mod := Module, state := State}, Res
 prep_paths([], _Options, Res) ->
   Res.
 
-
--spec build_routes(_) -> [{'_',[],[any()]},...].
-build_routes(Modules) ->
-  build_routes(Modules, #{}).
+build_routes(Ref, Modules) ->
+  build_routes(Ref, Modules, #{}).
 
 -spec build_routes(_,map()) -> [{'_',[],[any()]},...].
-build_routes(Modules, Options) when is_list(Modules) ->
+build_routes(Ref, Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ok = decirest:child_fun_factory(Modules),
   Hosts = maps:get(hosts, Options, ['_']),
@@ -57,16 +55,15 @@ build_routes(Modules, Options) when is_list(Modules) ->
     Options#{
       hosts => Hosts,
       all_modules => Modules,
-      state => State#{}},
+      state => State#{ref => Ref}},
 
-  build_routes(Modules, UpdatedOptions, []).
+  do_build_routes(Modules, UpdatedOptions, []).
 
--spec build_routes([any()],#{'state':=#{}, _=>_},[any()]) -> [{'_',[],[any()]},...].
-build_routes([Module | Modules], Options, Res) ->
-  build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
-build_routes([], #{nostatic := true, hosts := Hosts}, Res) ->
+do_build_routes([Module | Modules], Options, Res) ->
+  do_build_routes(Modules, Options, [build_module_routes(Module, Options) | Res]);
+do_build_routes([], #{nostatic := true, hosts := Hosts}, Res) ->
   [{Host, [], lists:flatten(Res)} || Host <- Hosts];
-build_routes([], #{hosts := Hosts}, Res) ->
+do_build_routes([], #{hosts := Hosts}, Res) ->
   [{Host, [], lists:flatten([{"/assets/[...]", cowboy_static, {priv_dir, decirest, "static/assets"}} | Res])} || Host <- Hosts].
 
 -spec build_module_routes(_,#{'state':=map(), _=>_}) -> any().

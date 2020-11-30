@@ -37,7 +37,7 @@ fetch_doc_by_path(Ref, Req, State) ->
 
 make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req, State) ->
   D0 = #{name => atom_to_binary(Module, utf8), module => Module},
-  D1 = maps:merge(D0, fetch_info(Handler, HandlerOpts, Req, State)),
+  D1 = maps:merge(D0, fetch_info(Module, Handler, HandlerOpts, Req, State)),
 
   D2 =
     case erlang:function_exported(Module, doc, 1) of
@@ -50,7 +50,7 @@ make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req, State) -
   Paths = get_model_routes(Ref, Module),
   D2#{paths => Paths}.
 
-fetch_info(Handler, HandlerOpts, Req, State0 = #{module := Module}) ->
+fetch_info(Module, Handler, HandlerOpts, Req, State0) ->
   State = maps:merge(State0, HandlerOpts),
   {AM, _, _} = Handler:allowed_methods(Req, State),
   {CTA, _, _} = Handler:content_types_accepted(Req, State),
@@ -60,7 +60,7 @@ fetch_info(Handler, HandlerOpts, Req, State0 = #{module := Module}) ->
     allowed_methods => AM,
     content_types_allowed => fix_content_type(CTA),
     content_types_provided => fix_content_type(CTP),
-    children => ChildUrls
+    children => maps:values(ChildUrls)
   }.
 
 get_all_model_routes(Ref) ->
@@ -73,10 +73,6 @@ get_model_routes(Ref, Module) ->
   % we assume just one host definition for now, this needs to be relaxed
   #{env := #{dispatch := [{_, _, Paths}]}} = ranch:get_protocol_options(Ref),
   [make_presentation_path(P) || {P, _, _, #{main_module := M}} <- Paths, M == Module].
-  % case get_all_model_routes(Ref) of
-    % #{Module := Routes} -> Routes;
-    % _ -> notfound
-  % end.
 
 fix_content_type(List) ->
   [<<A/binary, "/", B/binary>> || {{A, B, _}, _} <- List].
