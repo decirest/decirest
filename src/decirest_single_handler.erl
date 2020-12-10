@@ -121,10 +121,10 @@ validate_payload(Body, Req = #{method := Method}, State) ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
           {stop, ReqNew, NewState};
         {StatusCode, NewState} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, Req),
+          ReqNew = decirest_req:reply(StatusCode, Req),
           {stop, ReqNew, NewState};
         {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+          ReqNew = decirest_req:reply(StatusCode, #{}, RespBody, Req),
           {stop, ReqNew, NewState}
       end;
     {stop, NewReq, NewState} ->
@@ -221,7 +221,7 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
     {ok, []} ->
       {false, Req, State};
     {ok, Data} when is_list(Data) ->
-      ReqNew = cowboy_req:reply(409, Req),
+      ReqNew = decirest_req:reply(409, Req),
       {stop, ReqNew, State};
     {ok, Data} ->
       decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
@@ -229,10 +229,10 @@ resource_exists_default(Req, State = #{mro_call := true, module := Module, rstat
       lager:debug("got exception when fetching data ~p ~p", [Module, Reason]),
       {false, Req, State};
     {StatusCode, NewState} when is_number(StatusCode) ->
-      ReqNew = cowboy_req:reply(StatusCode, Req),
+      ReqNew = decirest_req:reply(StatusCode, Req),
       {stop, ReqNew, NewState};
     {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
-      ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+      ReqNew = decirest_req:reply(StatusCode, #{}, RespBody, Req),
       {stop, ReqNew, NewState}
   end;
 resource_exists_default(Req, State = #{module := Module}) ->
