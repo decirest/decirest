@@ -178,7 +178,7 @@ to_csv(Req, State = #{module := Module}) ->
 
 -spec to_csv_default(_,#{'module':=atom(), _=>_}) -> {_,_,_}.
 to_csv_default(Req, State = #{module := Module}) ->
-  Data = decirest:get_data(Module),
+  Data = decirest:get_data(Module, State),
   Title = Module:name(),
   Body = iolist_to_binary(decirest_handler_lib:to_csv(Title, Data)),
   {Body, Req, State}.
