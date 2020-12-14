@@ -43,7 +43,7 @@ style_level(2) ->
 get_required_properties(<<"array">>, Json) ->
   maps:get(<<"required">>, maps:get(<<"items">>, Json, #{}), []);
 get_required_properties(_, Json) ->
-  maps:get(<<"required">>, Json).
+  maps:get(<<"required">>, Json, []).
 
 get_properties(<<"array">>, Json) ->
   maps:get(<<"properties">>, maps:get(<<"items">>, Json, #{}), #{});
