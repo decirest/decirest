@@ -21,6 +21,7 @@
   get_data/2,
   get_data/3,
   get_data/4,
+  put_data/3,
   change_module/2,
   get_handler/1
 ]).
@@ -261,6 +262,9 @@ get_data(Module, State) ->
     _ ->
       undefined
   end.
+
+put_data(Module, Data, State = #{rstate := RState}) ->
+  State#{rstate => RState#{Module => #{data => Data}}}.
 
 -spec get_data(any(), atom(), map()) -> any().
 get_data(Key, Module, State) when is_atom(Module) ->

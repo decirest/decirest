@@ -17,7 +17,6 @@ simple_test() ->
 missing_params_test() ->
   Schema = #{
     <<"$schema">> => <<"http://json-schema.org/draft-04/schema#">>,
-    <<"id">> => <<"http://schema.decirest.com/schema/account.json">>,
     <<"properties">> => #{
       <<"field1">> => #{<<"type">> => <<"string">>},
       <<"field2">> => #{<<"type">> => <<"integer">>}
@@ -32,7 +31,6 @@ missing_params_test() ->
 deep_missing_params_test() ->
   Schema = #{
     <<"$schema">> => <<"http://json-schema.org/draft-04/schema#">>,
-    <<"id">> => <<"http://schema.decirest.com/schema/account.json">>,
     <<"properties">> => #{
       <<"obj">> => #{
         <<"type">> => <<"object">>,
@@ -48,6 +46,20 @@ deep_missing_params_test() ->
   },
   ExpectedResult = {error, #{<<"obj__f1">> => [required]}},
   Result = decirest_validator:validate_on_schema(#{<<"field2">> => 5, <<"obj">> => #{}}, Schema),
+  ?assertEqual(ExpectedResult, Result).
+
+drop_test() ->
+  Schema = #{
+    <<"$schema">> => <<"http://json-schema.org/draft-04/schema#">>,
+    <<"additionalProperties">> => false,
+    <<"properties">> => #{
+      <<"field1">> => #{<<"type">> => <<"string">>},
+      <<"field2">> => #{<<"type">> => <<"integer">>}
+    },
+    <<"type">> => <<"object">>
+  },
+  ExpectedResult = {ok,#{<<"field2">> => 5}},
+  Result = decirest_validator:validate_on_schema(#{<<"field2">> => 5, <<"not_walcome">> => 22}, Schema),
   ?assertEqual(ExpectedResult, Result).
 
 

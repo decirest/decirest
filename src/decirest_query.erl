@@ -87,16 +87,4 @@ default_query_bindings_test() ->
   ?assertEqual(1000, maps:get(timestamp_to, Bindings)),
   meck:unload().
 
-get_query_bindings_test() ->
-  meck:new(query_module, [non_strict]),
-  meck:expect(query_module, get_query_bindings, 2,
-    fun(Req, State) ->
-      cowboy_req:match_qs([{timestamp_from, [], 1}, {timestamp_to, [], 1000}], Req)
-    end),
-  Req = #{bindings => #{ a => <<"cowboybinding">>}, qs => <<"timestamp_from=11&timestamp_to=12">>},
-  Bindings = get_bindings(Req, #{module => query_module}),
-  ?assertEqual(<<"cowboybinding">>, maps:get(a, Bindings)),
-  ?assertEqual(<<"11">>, maps:get(timestamp_from, Bindings)),
-  ?assertEqual(<<"12">>, maps:get(timestamp_to, Bindings)),
-  meck:unload().
 -endif.
