@@ -93,10 +93,10 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
           ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
           {stop, ReqNew, NewState};
         {StatusCode, NewState} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, Req),
+          ReqNew = decirest_req:reply(StatusCode, Req),
           {stop, ReqNew, NewState};
         {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
-          ReqNew = cowboy_req:reply(StatusCode, #{}, RespBody, Req),
+          ReqNew = decirest_req:reply(StatusCode, #{}, RespBody, Req),
           {stop, ReqNew, NewState}
       end;
     {error, Errors} ->
