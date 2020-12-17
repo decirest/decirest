@@ -177,8 +177,8 @@ to_csv(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_csv, Req, State, fun to_csv_default/2).
 
 -spec to_csv_default(_,#{'module':=atom(), _=>_}) -> {_,_,_}.
-to_csv_default(Req, State = #{module := Module,  rstate := RState}) ->
-  #{Module := #{data := Data}} = RState,
+to_csv_default(Req, State = #{module := Module}) ->
+  Data = decirest:get_data(Module, State),
   Title = Module:name(),
   Body = iolist_to_binary(decirest_handler_lib:to_csv(Title, Data)),
   {Body, Req, State}.
@@ -195,7 +195,7 @@ to_html_default(Req, State = #{module := Module}) ->
     {title, Title},
     {single_data, Json}
   ],
-  {ok, ReqNew1, Body} = decirest_handler_lib:render(Req, Json, Context),
+  {ok, ReqNew1, Body} = decirest_handler_lib:render(ReqNew, Json, Context),
   {Body, ReqNew1, StateNew}.
 
 -spec to_json(_,#{'module':=atom(), _=>_}) -> any().
@@ -203,28 +203,30 @@ to_json(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, to_json, Req, State, fun to_json_default/2).
 
 -spec to_json_default(_,#{'module':=_, 'rstate':=map(), _=>_}) -> {binary(),_,#{'child_fun':=fun((_) -> any()), 'module':=_, 'rstate':=map(), _=>_}}.
-to_json_default(#{path := Path} = Req, State = #{module := Module, rstate := RState}) ->
-  #{Module := #{data := Data}} = RState,
+to_json_default(#{path := Path} = Req, State = #{module := Module}) ->
+  Data = decirest:get_data(Module, State),
+  Data1 = decirest_handler_lib:prepare_output(Data, State),
+  Data2 = decirest_handler_lib:validate_output(single, Data1, State),
   ChildUrls = decirest:child_urls_map(decirest:get_children(Module), Req, State),
   PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
-  {jiffy:encode(maps:merge(ChildUrls, Data#{self_url => Path}), [force_utf8] ++ PrettyConfig), Req, State}.
+  {jiffy:encode(maps:merge(ChildUrls, Data2#{self_url => Path}), [force_utf8] ++ PrettyConfig), Req, State}.
 
 -spec resource_exists(_,#{'module':=atom(), _=>_}) -> any().
 resource_exists(Req, State = #{module := Module}) ->
   decirest:apply_with_default(Module, resource_exists, [Req, State], fun resource_exists_default/2).
 
 -spec resource_exists_default(_,#{'module':=_, _=>_}) -> any().
-resource_exists_default(Req, State = #{mro_call := true, module := Module, rstate := RState}) ->
+resource_exists_default(Req, State = #{mro_call := true, module := Module}) ->
   case decirest_handler_lib:fetch_data(Req, State) of
     {ok, [Data]} ->
-      decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
+      decirest_auth:gate2(Req, decirest:put_data(Module, Data, State));
     {ok, []} ->
       {false, Req, State};
     {ok, Data} when is_list(Data) ->
       ReqNew = decirest_req:reply(409, Req),
       {stop, ReqNew, State};
     {ok, Data} ->
-      decirest_auth:gate2(Req, State#{rstate => RState#{Module => #{data => Data}}});
+      decirest_auth:gate2(Req, decirest:put_data(Module, Data, State));
     {error, Reason} ->
       lager:debug("got exception when fetching data ~p ~p", [Module, Reason]),
       {false, Req, State};

@@ -26,11 +26,11 @@ child_test() ->
   mock_ident(b, b_id),
 
 
-  ?assert(lists:keymember("/a/:a", 1,  extract_paths(decirest_router:build_routes([a, b], #{})))),
-  ?assert(lists:keymember(["/a/:a","/",<<"b">>], 1,  extract_paths(decirest_router:build_routes([a, b], #{})))),
+  ?assert(lists:keymember("/a/:a", 1,  extract_paths(decirest_router:build_routes(test_ref, [a, b], #{})))),
+  ?assert(lists:keymember(["/a/:a","/",<<"b">>], 1,  extract_paths(decirest_router:build_routes(test_ref, [a, b], #{})))),
 
-  ?assertNot(lists:keymember("/a/:a", 1,  extract_paths(decirest_router:build_routes([b], #{})))),
-  ?assert(lists:keymember(["/a/:a","/",<<"b">>], 1,  extract_paths(decirest_router:build_routes([b], #{})))).
+  ?assertNot(lists:keymember("/a/:a", 1,  extract_paths(decirest_router:build_routes(test_ref, [b], #{})))),
+  ?assert(lists:keymember(["/a/:a","/",<<"b">>], 1,  extract_paths(decirest_router:build_routes(test_ref, [b], #{})))).
 
 
 

@@ -33,6 +33,8 @@
   maybe_pretty/2,
   to_csv/2,
   add_default_allow_header/2,
+  prepare_output/2,
+  validate_output/3,
   from_multi/2,
   from_multi_default/2,
   render/3
@@ -89,7 +91,7 @@ content_types_accepted_default(Req, State) ->
 export_to_methods(Module, ExportMappingList, DefaultMethods) ->
   lists:foldl(
     fun({{Function, Arity}, Methods}, Acc) ->
-      case decirest_handler_lib:is_exported(Module, Function, Arity) of
+      case is_exported(Module, Function, Arity) of
         true ->
           lists:append([Methods, Acc]);
         false ->
@@ -145,7 +147,7 @@ validate_payload(Type, Body, Req, State = #{module := Module}) ->
   end.
 
 validate_parts(Body, Req, State) ->
-  ValidateCalls=
+  ValidateCalls =
     [
       {validate_bin, fun validate_bin/1},
       {to_term, fun to_term/1},
@@ -155,7 +157,7 @@ validate_parts(Body, Req, State) ->
   unwrap_epipe(epipe:run(ValidateCalls, {Body, Req, State})).
 
 validate_action_parts(Body, Req, State) ->
-  ValidateCalls=
+  ValidateCalls =
     [
       {to_term, fun to_term/1},
       {validate_on_schema, validate_on_schema_fun(action_schema)},
@@ -291,6 +293,42 @@ maybe_pretty(Req, State = #{module := Module}) ->
       []
   end.
 
+prepare_output(DataList, State) when is_list(DataList) ->
+  [prepare_output(Data, State) || Data <- DataList];
+prepare_output(Data, #{module := Module}) ->
+  decirest:apply_with_default(Module, prepare_output, [Data], Data).
+
+validate_output(Type, DataList, State) when is_list(DataList) ->
+  [validate_output(Type, Data, State) || Data <- DataList];
+validate_output(Type, Data, State = #{module := Module}) ->
+  case is_exported(Module, output_schema, 0) of
+    true ->
+      case get_schema(Type, Module) of
+        no_schema ->
+          Data;
+        Schema ->
+          case decirest_validator:validate_on_schema(Data, Schema) of
+            {error, Errors} ->
+              lager:error("Validation errors: ~p ~p", [Errors, Data]),
+              Data#{validation_errors => Errors};
+            {ok, ValidData} ->
+              ValidData
+          end
+      end;
+    false ->
+      Data
+  end.
+
+get_schema(Type, Module) ->
+  case Module:output_schema() of
+    #{Type := Schema} when is_map(Schema) ->
+      Schema;
+    Schema when is_map(Schema) ->
+      Schema;
+    _ ->
+      no_schema
+  end.
+
 add_default_allow_header(Req, #{allowed_methods := Methods} = State) ->
   <<", ", Allow/binary>> = <<<<", ", M/binary>> || M <- Methods>>,
   {ok, cowboy_req:set_resp_header(<<"allow">>, Allow, Req), State}.
@@ -308,7 +346,7 @@ from_multi_default(Req, State) ->
 render(Req, Json, Context) ->
   case cowboy_req:binding(render, Req, true) of
     false ->
-      NewReq = cowboy_req:set_resp_header(<<"content-type">>,  <<"application/json">>, Req),
+      NewReq = cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req),
       {ok, NewReq, Json};
     _ ->
       {ok, Body} = std_response_html_dtl:render(Context),
