@@ -28,14 +28,17 @@ fetch_doc_by_module(Ref, Module, Req, State) ->
 fetch_doc_by_path(Ref, Req, State) ->
   #{env := Env} = ranch:get_protocol_options(Ref),
   case cowboy_router:execute(Req, Env) of
-    {ok, _ReqNew, _EnvNew = #{handler := H, handler_opts := HO}} ->
-      make_doc_map(Ref, H, HO, Req, State);
+    {ok, ReqNew, _EnvNew = #{handler := Handler, handler_opts := HandlerOpts}} ->
+      make_doc_map(Ref, Handler, HandlerOpts, ReqNew, State);
     Res ->
       lager:critical("stop, ~p", [Res]),
       stop
   end.
 
-make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req, State) ->
+make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req0, State0) ->
+  %% makes it possible to reroute to a different module
+  {_, Req, State} = decirest:do_callback(Module, init, Req0, State0, undefined),
+
   D0 = #{name => atom_to_binary(Module, utf8), module => Module},
   D1 = maps:merge(D0, fetch_info(Module, Handler, HandlerOpts, Req, State)),
 
