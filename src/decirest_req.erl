@@ -11,6 +11,11 @@
 
 %% API
 -export([
+  binding/2,
+  bindings/1,
+  header/2,
+  method/1,
+  path/1,
   reply/2,
   reply/4
 ]).
@@ -21,6 +26,26 @@
 -type http_headers() :: cowboy:http_headers().
 -type resp_body() :: cowboy_req:resp_body().
 
+
+-spec binding(atom(), req()) -> any() | undefined.
+binding(Name, Req) ->
+  cowboy_req:binding(Name, Req).
+
+-spec bindings(req()) -> cowboy_router:bindings().
+bindings(Req) ->
+  cowboy_req:bindings(Req).
+
+-spec header(binary(), req()) -> binary() | undefined.
+header(Name, Req) ->
+  cowboy_req:header(Name, Req).
+
+-spec method(req()) -> binary().
+method(Req) ->
+  cowboy_req:method(Req).
+
+-spec path(req()) -> binary().
+path(Req) ->
+  cowboy_req:path(Req).
 
 -spec reply(http_status(), Req) -> Req when Req::req().
 reply(Status, Req) ->
