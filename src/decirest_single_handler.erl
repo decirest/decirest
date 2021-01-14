@@ -33,7 +33,7 @@ forbidden(Req, State) ->
 allowed_methods(Req, State = #{module := Module}) ->
   {Methods, Req1, State1} =
     decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2),
-  case cowboy_req:method(Req) of
+  case decirest_req:method(Req) of
     <<"OPTIONS">> ->
       %% We need to keep allowed_methods in state to
       %% be able to return in headers if recource implement
@@ -102,7 +102,7 @@ validate_action(Body, Req, State) ->
           {false, Req, State};
         {ok, ResBody} ->
           RespBody = jiffy:encode(ResBody, [force_utf8]),
-          ReqNew = cowboy_req:set_resp_body(RespBody, Req),
+          ReqNew = decirest_req:set_resp_body(RespBody, Req),
           {true, ReqNew, State}
       end;
         {error, Error} ->
@@ -118,7 +118,7 @@ validate_payload(Body, Req = #{method := Method}, State) ->
         {ok, NewState} ->
           {true, Req, NewState};
         {error, NewState} ->
-          ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
+          ReqNew = decirest_req:set_resp_body(<<"error">>, Req),
           {stop, ReqNew, NewState};
         {StatusCode, NewState} when is_number(StatusCode) ->
           ReqNew = decirest_req:reply(StatusCode, Req),

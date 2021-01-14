@@ -35,7 +35,7 @@ resource_exists(Req = #{path := << "/apidoc/path", Path/binary>>}, State = #{ref
   parse_doc_output(PathDoc, Req, State);
 resource_exists(Req, State = #{ref := Ref, mro_call := true}) ->
   %% fetch by name
-  Name = cowboy_req:binding(name, Req),
+  Name = decirest_req:binding(name, Req),
   Module = get_module_from_doc_name(Ref, Name),
   ModuleDoc = decirest_doc_lib:fetch_doc_by_module(Ref, Module, Req, State),
   parse_doc_output(ModuleDoc, Req, State);
