@@ -21,7 +21,7 @@
 
 
 get_bindings(Req, #{module := Module} = _State) ->
-  Bindings = cowboy_req:bindings(Req),
+  Bindings = decirest_req:bindings(Req),
   DefaultQueryMatch =
     [
       {sort_by, [], undefined},

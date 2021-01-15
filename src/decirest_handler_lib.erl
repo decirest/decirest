@@ -108,7 +108,7 @@ is_exported(Module, Function, Arity) ->
   erlang:function_exported(Module, Function, Arity).
 
 fetch_data(Req, State = #{module := Module}) ->
-  Bindings = cowboy_req:bindings(Req),
+  Bindings = decirest_req:bindings(Req),
   case is_exported(Module, fetch_data, 3) of
     true ->
       Module:fetch_data(Bindings, Req, State);
@@ -117,7 +117,7 @@ fetch_data(Req, State = #{module := Module}) ->
   end.
 
 delete_data(Req, State = #{module := Module}) ->
-  Bindings = cowboy_req:bindings(Req),
+  Bindings = decirest_req:bindings(Req),
   case is_exported(Module, delete_data, 3) of
     true ->
       Module:delete_data(Bindings, Req, State);
@@ -225,7 +225,7 @@ unwrap_epipe({error, _Fun, Error, _}) ->
 return_error(Errors, Req, State) ->
   lager:critical("errors ~p", [Errors]),
   RespBody = jiffy:encode(Errors, [force_utf8]),
-  ReqNew = cowboy_req:set_resp_body(RespBody, Req),
+  ReqNew = decirest_req:set_resp_body(RespBody, Req),
   {false, ReqNew, State}.
 
 -spec persist_data(binary(), map(), #{'module' := atom(), _ => _}) -> any().
@@ -331,7 +331,7 @@ get_schema(Type, Module) ->
 
 add_default_allow_header(Req, #{allowed_methods := Methods} = State) ->
   <<", ", Allow/binary>> = <<<<", ", M/binary>> || M <- Methods>>,
-  {ok, cowboy_req:set_resp_header(<<"allow">>, Allow, Req), State}.
+  {ok, decirest_req:set_resp_header(<<"allow">>, Allow, Req), State}.
 
 from_multi(Req, State = #{module := Module}) ->
   decirest:do_callback(Module, from_multi, Req, State, fun from_multi_default/2).
@@ -346,7 +346,7 @@ from_multi_default(Req, State) ->
 render(Req, Json, Context) ->
   case cowboy_req:binding(render, Req, true) of
     false ->
-      NewReq = cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req),
+      NewReq = decirest_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req),
       {ok, NewReq, Json};
     _ ->
       {ok, Body} = std_response_html_dtl:render(Context),

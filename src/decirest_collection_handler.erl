@@ -38,7 +38,7 @@ allow_missing_post_default(Req,State) ->
 allowed_methods(Req, State = #{module := Module}) ->
   {Methods, Req1, State1} =
     decirest:do_callback(Module, allowed_methods, Req, State, fun allowed_methods_default/2),
-  case cowboy_req:method(Req) of
+  case decirest_req:method(Req) of
     <<"OPTIONS">> ->
       %% We need to keep allowed_methods in state to
       %% be able to return in headers if recource implement
@@ -90,7 +90,7 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
           SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(NewID)]),
           {{true, SelfUrl}, Req, NewState};
         {error, NewState} ->
-          ReqNew = cowboy_req:set_resp_body(<<"error">>, Req),
+          ReqNew = decirest_req:set_resp_body(<<"error">>, Req),
           {stop, ReqNew, NewState};
         {StatusCode, NewState} when is_number(StatusCode) ->
           ReqNew = decirest_req:reply(StatusCode, Req),
@@ -153,7 +153,7 @@ to_json_default(Req, State) ->
   {jiffy:encode(Data3, [force_utf8] ++ PrettyConfig), Req, State}.
 
 maybe_sort(Req, Data) ->
-  case cowboy_req:binding(sort_by, Req, undefined) of
+  case decirest_req:binding(sort_by, Req) of
     undefined ->
       Data;
     Key ->
@@ -170,7 +170,7 @@ key_sort(Key, MapList) ->
 
 
 fetch_data(Req, #{module := Module} = State) ->
-  case Module:fetch_data(cowboy_req:bindings(Req), State) of
+  case Module:fetch_data(decirest_req:bindings(Req), State) of
     {ok, D} ->
       D;
     {error, Msg} ->

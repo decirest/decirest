@@ -330,7 +330,7 @@ child_url_test() ->
     qs => <<"dummy=2785">>
   },
   ChildPath = "user",
-  ?assert(lists:member(Path, cowboy_req:uri(Req, #{host => undefined}))),
+  ?assert(lists:member(Path, decirest_req:uri(Req, #{host => undefined}))),
   ?assertEqual(pretty_path([Path, "/", ChildPath]), <<"/api/v1/company/1/user">>).
 
 get_parent_test() ->
