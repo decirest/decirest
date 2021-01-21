@@ -127,7 +127,7 @@ to_html(Req, State = #{module := Module}) ->
 
 -spec to_html_default(_,#{'module':=atom(), _=>_}) -> {_,_,_}.
 to_html_default(Req, State = #{module := Module}) ->
-  {Json, ReqNew, StateNew} = to_json(Req, State),
+  {Json, _Req, _State} = to_json(Req, State),
   Title = Module:name(),
   PK = decirest:module_pk(Module),
   Context = [
@@ -136,7 +136,7 @@ to_html_default(Req, State = #{module := Module}) ->
     {collection_data, Json}
   ],
   {ok, ReqNew1, Body} = decirest_handler_lib:render(Req, Json, Context),
-  {Body, ReqNew1, StateNew}.
+  {Body, ReqNew1, State}.
 
 -spec to_json(_,#{'module':=atom(), _=>_}) -> any().
 to_json(Req, State = #{module := Module}) ->

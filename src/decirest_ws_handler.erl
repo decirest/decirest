@@ -39,9 +39,9 @@ websocket_init(State = #{module := Module}) ->
 websocket_init_default(State0) ->
     case decirest_handler_lib:is_authorized(req(State0), State0) of
     {true, Req, State} ->
-      {Res, ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true),
+      {_Res, _ReqNew, StateNew} = decirest:call_mro(resource_exists, Req, State, true),
       {[], StateNew};
-    {false, Req, State} ->
+    {false, _Req, State} ->
       {[], State}
   end.
 
@@ -58,7 +58,7 @@ websocket_handle(Msg, #{module := Module} = State) ->
       {[{text, <<"unable_to_decode">>}], State}
   end.
 
-websocket_info({'EXIT',_Pid, Reason} = Msg, State) ->
+websocket_info({'EXIT',_Pid, _Reason}, _State) ->
   {[], ok}.
 
 decode_message({text, Txt}) ->

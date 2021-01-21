@@ -69,9 +69,9 @@ get_description_md(Description, Indentation) ->
 get_list_md(List, Indentation, ListSymbol) ->
   [[Indentation, ListSymbol, E, <<"\n">>] || E <- List].
 
-get_default_md(undefined, Indentation) ->
+get_default_md(undefined, _Indentation) ->
   [];
-get_default_md(#{<<"element">> := Map}, Indentation) ->
+get_default_md(#{<<"element">> := _Map}, _Indentation) ->
   [];
 %get_default_md(Map, Indentation);
 get_default_md(Any, Indentation) ->

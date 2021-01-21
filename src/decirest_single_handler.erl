@@ -98,7 +98,7 @@ validate_action(Body, Req, State) ->
       case decirest_handler_lib:perform_action(Payload, Req, State) of
         ok ->
           {true, Req, State};
-        {error, Reason} ->
+        {error, _Reason} ->
           {false, Req, State};
         {ok, ResBody} ->
           RespBody = jiffy:encode(ResBody, [force_utf8]),

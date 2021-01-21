@@ -77,7 +77,7 @@ get_module_from_doc_name(Ref, [Module | Modules], Name) ->
     _ ->
       get_module_from_doc_name(Ref, Modules, Name)
   end;
-get_module_from_doc_name(Ref, [], _Name) ->
+get_module_from_doc_name(_Ref, [], _Name) ->
   undefined.
 
 get_css_file() ->
@@ -151,7 +151,7 @@ ctp_md(Data) ->
 cta_md(Data) ->
   [<<"Content-Type accepted\n---\n">>, md_list(Data)].
 
-children_md(Name) ->
+children_md(_Name) ->
   fun(ChildUrls) ->
     [<<"Child resources\n---\n">>, md_link_list(ChildUrls)]
   end.
