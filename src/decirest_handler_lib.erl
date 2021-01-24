@@ -131,7 +131,7 @@ validate_action(Body, Req, State) ->
 validate_payload(Body, Req, State) ->
   validate_payload(normal, Body, Req, State).
 
-validate_payload(Type, Body, Req, State = #{module := Module}) ->
+validate_payload(_Type, Body, Req, State = #{module := Module}) ->
   case is_exported(Module, validate_payload, 3) of
     true ->
       Module:validate_payload(Body, Req, State);
@@ -300,7 +300,7 @@ prepare_output(Data, #{module := Module}) ->
 
 validate_output(Type, DataList, State) when is_list(DataList) ->
   [validate_output(Type, Data, State) || Data <- DataList];
-validate_output(Type, Data, State = #{module := Module}) ->
+validate_output(Type, Data, #{module := Module}) ->
   case is_exported(Module, output_schema, 0) of
     true ->
       case get_schema(Type, Module) of
