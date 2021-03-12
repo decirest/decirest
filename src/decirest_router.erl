@@ -45,7 +45,6 @@ prep_paths([], _Options, Res) ->
 build_routes(Ref, Modules) ->
   build_routes(Ref, Modules, #{}).
 
--spec build_routes(_,map()) -> [{'_',[],[any()]},...].
 build_routes(Ref, Modules, Options) when is_list(Modules) ->
   State = maps:get(state, Options, #{}),
   ok = decirest:child_fun_factory(Modules),

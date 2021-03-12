@@ -16,6 +16,7 @@
   header/2,
   host/1,
   method/1,
+  set_method/2,
   parse_cookies/1,
   path/1,
   reply/2,
@@ -53,6 +54,10 @@ host(Req) ->
 -spec method(req()) -> binary().
 method(Req) ->
   cowboy_req:method(Req).
+
+-spec set_method(req(), binary()) -> req().
+set_method(#{method := _} = Req, Method) ->
+  Req#{method => Method}.
 
 -spec parse_cookies(req()) -> [{binary(), binary()}].
 parse_cookies(Req) ->

@@ -21,6 +21,8 @@
   doc_map_to_md/1
 ]).
 
+-type req() :: cowboy_req:req().
+
 name() -> <<"documentation">>.
 
 paths() -> [
@@ -101,10 +103,9 @@ get_extra_docs(Ref, Module) ->
       end
   end.
 
+-spec maybe_fix_paths(req()) -> req().
 maybe_fix_paths(Map = #{paths := Paths}) ->
-  Map#{paths => [P || P = <<"/api", _/binary>> <- Paths]};
-maybe_fix_paths(Map) ->
-  Map.
+  Map#{paths => [P || P = <<"/api", _/binary>> <- Paths]}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                                                                       %%

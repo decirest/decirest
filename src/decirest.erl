@@ -59,7 +59,7 @@ get_modules(Ref) ->
 get_children(Resource) ->
   persistent_term:get({?MODULE, Resource}, []).
 
--spec child_fun_factory([any()]) -> fun((_) -> [any()]).
+-spec child_fun_factory([any()]) -> ok.
 child_fun_factory(Resources) ->
   [persistent_term:erase({?MODULE, Resource}) || Resource <- Resources],
   [add_resource_as_child(Resource) || Resource <- Resources],
