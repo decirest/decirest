@@ -1,0 +1,136 @@
+diff --git a/src/decirest.erl b/src/decirest.erl
+index 40a82a7..bf9973b 100644
+--- a/src/decirest.erl
++++ b/src/decirest.erl
+@@ -199,12 +199,21 @@ module_pk(Module) ->
+       id
+   end.
+ 
++
++% If a header "trace" is in the request, log everything going through this module
++maybe_trace_result(Callback, Module, #{headers := #{<<"trace">> := Symbol}} = Req, State, Result) ->
++  {R, _, _} = Result,
++  lager:info("Trace ~p:~p with symbol ~p\nRequest:\n~p\nState:\n~p\nResponse:\n~p\n\n\n", [Module, Callback, Symbol, Req, State, R]),
++  Result;
++  maybe_trace_result(_, _, _, _, Result) ->
++  Result.
++
+ -spec do_callback(atom(),atom(),_,_,_) -> any().
+ do_callback(Callback, Req, #{module := Module} = State, Default) ->
+   do_callback(Module, Callback, Req, State, Default).
+ 
+ do_callback(Module, Callback, Req, State, Default) ->
+-  case erlang:function_exported(Module, Callback, 2) of
++  Result = case erlang:function_exported(Module, Callback, 2) of
+     true ->
+       case Module:Callback(Req, State) of
+         {run_default, [Req1, State1]} ->
+@@ -225,7 +234,8 @@ do_callback(Module, Callback, Req, State, Default) ->
+         false ->
+           {Default, Req, State}
+       end
+-  end.
++  end,
++  maybe_trace_result(Module, Callback, Req, State, Result).
+ 
+ -spec apply_with_default(atom(),atom(),[any()],_) -> any().
+ apply_with_default(M, F, A, Default) ->
+diff --git a/src/decirest_doc_lib.erl b/src/decirest_doc_lib.erl
+index 84bc6c1..0ba0e4c 100644
+--- a/src/decirest_doc_lib.erl
++++ b/src/decirest_doc_lib.erl
+@@ -35,9 +35,16 @@ fetch_doc_by_path(Ref, Req, State) ->
+       stop
+   end.
+ 
+-make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req0, State0) ->
++make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module0}, Req0, State0) ->
+   %% makes it possible to reroute to a different module
+-  {_, Req, State} = decirest:do_callback(Module, init, Req0, State0, undefined),
++  {_, Req, State} = decirest:do_callback(Module0, init, Req0, State0, undefined),
++
++  DocModule = maps:get(main_module, State0),  % This is the doc handler module itself
++  %% call to init may have changed the module
++  Module = case maps:get(main_module, State) of
++    DocModule -> Module0;  % init did not change module, so use module from handler opts
++    NewModule -> NewModule
++  end,
+ 
+   D0 = #{name => atom_to_binary(Module, utf8), module => Module},
+   D1 = maps:merge(D0, fetch_info(Module, Handler, HandlerOpts, Req, State)),
+diff --git a/src/decirest_doc_resource.erl b/src/decirest_doc_resource.erl
+index b8d5f96..a58733c 100644
+--- a/src/decirest_doc_resource.erl
++++ b/src/decirest_doc_resource.erl
+@@ -96,7 +96,7 @@ get_extra_docs(Ref, Module) ->
+       F = filename:join([Path, "doc", [atom_to_list(Module) |".md"]]),
+       case file:read_file(F) of
+         {error, _} ->
+-          lager:critical("no data, ~p", [F]),
++          lager:info("no data, ~p", [F]),
+           #{};
+         {ok, Markdown} ->
+           #{markdown_extra => Markdown}
+@@ -164,4 +164,4 @@ md_link_list(DataList) ->
+   [["* [", Data, "](/apidoc/path", Data,  ") \n"]  || Data <- DataList].
+ 
+ md_list(DataList) ->
+-  [["* ", Data, "\n"]  || Data <- DataList].
+\ No newline at end of file
++  [["* ", Data, "\n"]  || Data <- DataList].
+diff --git a/src/decirest_schema.erl b/src/decirest_schema.erl
+index f487d40..6da307e 100644
+--- a/src/decirest_schema.erl
++++ b/src/decirest_schema.erl
+@@ -18,7 +18,7 @@ schema_to_md(Json) ->
+ pretty_prop({Property, Json}, #{level := Level, required := Required}) ->
+   {Indentation, ListSymbol} = style_level(Level),
+   Default =  maps:get(<<"default">>, Json, undefined),
+-  Type = maps:get(<<"type">>, Json, <<"object">>),
++  Type = get_type_md(Json),
+   RequiredProps = get_required_properties(Type, Json),
+   Properties = get_properties(Type, Json),
+   List = maps:get(<<"enum">>, Json, []),
+@@ -38,7 +38,9 @@ style_level(0) ->
+ style_level(1) ->
+   {<<"    ">>, <<"* ">>};
+ style_level(2) ->
+-  {<<"        ">>, <<"- ">>}.
++  {<<"        ">>, <<"- ">>};
++style_level(3) ->
++  {<<"            ">>, <<"+ ">>}.
+ 
+ get_required_properties(<<"array">>, Json) ->
+   maps:get(<<"required">>, maps:get(<<"items">>, Json, #{}), []);
+@@ -50,6 +52,14 @@ get_properties(<<"array">>, Json) ->
+ get_properties(_, Json) ->
+   maps:get(<<"properties">>, Json, #{}).
+ 
++get_type_md(Json) ->
++  Type = maps:get(<<"type">>, Json, <<"object">>),
++  case is_list(Type) of
++    true -> lists:join(<<", ">>, Type);
++    false -> Type
++  end.
++
++
+ get_title_md(undefined, Json, Required) ->
+   % assume top-level, get "title" instead
+   get_title_md(maps:get(<<"title">>, Json, <<"">>), Json, Required);
+@@ -66,8 +76,14 @@ get_description_md(undefined, _) ->
+ get_description_md(Description, Indentation) ->
+   [<<"\n">>, Indentation, Description, <<"\n">>].
+ 
+-get_list_md(List, Indentation, ListSymbol) ->
+-  [[Indentation, ListSymbol, E, <<"\n">>] || E <- List].
++get_list_md([], Indentation, ListSymbol) ->
++  [];
++get_list_md([H|T], Indentation, ListSymbol) ->
++  Row = [Indentation, ListSymbol, jiffy:encode(H, [pretty]), <<"\n">>],
++  [ Row | get_list_md(T, Indentation, ListSymbol)].
++
++  %get_list_md(List, Indentation, ListSymbol) ->
++%  [[Indentation, ListSymbol, E, <<"\n">>] || E <- List].
+ 
+ get_default_md(undefined, _Indentation) ->
+   [];
