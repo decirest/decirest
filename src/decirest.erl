@@ -201,9 +201,15 @@ module_pk(Module) ->
 
 
 % If a header "trace" is in the request, log everything going through this module
-maybe_trace_result(Callback, Module, #{headers := #{<<"trace">> := Symbol}} = Req, State, Result) ->
-  {R, _, _} = Result,
-  lager:info("Trace ~p:~p with symbol ~p\nRequest:\n~p\nState:\n~p\nResponse:\n~p\n\n\n", [Module, Callback, Symbol, Req, State, R]),
+maybe_trace_result(Module, Callback, #{headers := #{<<"trace">> := Symbol}} = Req, State, Result) ->
+  {R, Req1, State1} = Result,
+  lager:info("Trace ~p:~p with symbol ~p\nRequest:\n~p\nState:\n~p\nResponse:\n~p\n", [Module, Callback, Symbol, Req, State, R]),
+  case Symbol of
+      <<"full">> ->
+          lager:info("New Req:\n~p\nNew State:\n~p\n\n\n", [Req1, State1]);
+      _ ->
+          lager:info("\n\n")
+  end,   
   Result;
   maybe_trace_result(_, _, _, _, Result) ->
   Result.

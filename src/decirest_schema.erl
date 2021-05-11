@@ -53,6 +53,7 @@ get_properties(_, Json) ->
   maps:get(<<"properties">>, Json, #{}).
 
 get_type_md(Json) ->
+  % type is either a single type (string) or a list of types ([string])
   Type = maps:get(<<"type">>, Json, <<"object">>),
   case is_list(Type) of
     true -> lists:join(<<", ">>, Type);
