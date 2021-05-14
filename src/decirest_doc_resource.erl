@@ -96,7 +96,7 @@ get_extra_docs(Ref, Module) ->
       F = filename:join([Path, "doc", [atom_to_list(Module) |".md"]]),
       case file:read_file(F) of
         {error, _} ->
-          lager:critical("no data, ~p", [F]),
+          lager:info("no data, ~p", [F]),
           #{};
         {ok, Markdown} ->
           #{markdown_extra => Markdown}

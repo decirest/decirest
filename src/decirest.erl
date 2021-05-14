@@ -199,12 +199,27 @@ module_pk(Module) ->
       id
   end.
 
+
+% If a header "trace" is in the request, log everything going through this module
+maybe_trace_result(Module, Callback, #{headers := #{<<"trace">> := Symbol}} = Req, State, Result) ->
+  {R, Req1, State1} = Result,
+  lager:info("Trace ~p:~p with symbol ~p\nRequest:\n~p\nState:\n~p\nResponse:\n~p\n", [Module, Callback, Symbol, Req, State, R]),
+  case Symbol of
+      <<"full">> ->
+          lager:info("New Req:\n~p\nNew State:\n~p\n\n\n", [Req1, State1]);
+      _ ->
+          lager:info("\n\n")
+  end,   
+  Result;
+  maybe_trace_result(_, _, _, _, Result) ->
+  Result.
+
 -spec do_callback(atom(),atom(),_,_,_) -> any().
 do_callback(Callback, Req, #{module := Module} = State, Default) ->
   do_callback(Module, Callback, Req, State, Default).
 
 do_callback(Module, Callback, Req, State, Default) ->
-  case erlang:function_exported(Module, Callback, 2) of
+  Result = case erlang:function_exported(Module, Callback, 2) of
     true ->
       case Module:Callback(Req, State) of
         {run_default, [Req1, State1]} ->
@@ -225,7 +240,8 @@ do_callback(Module, Callback, Req, State, Default) ->
         false ->
           {Default, Req, State}
       end
-  end.
+  end,
+  maybe_trace_result(Module, Callback, Req, State, Result).
 
 -spec apply_with_default(atom(),atom(),[any()],_) -> any().
 apply_with_default(M, F, A, Default) ->
