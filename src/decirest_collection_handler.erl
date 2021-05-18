@@ -80,10 +80,11 @@ from_fun_default(Req0, State) ->
 handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
   PK = decirest:module_pk(Module),
   case decirest_handler_lib:validate_payload(Body, Req, State) of
-    {ok, Payload = #{PK := ID}} ->
+    {ok, Payload} ->
       % gate3 auth here
       case decirest_handler_lib:persist_data(Payload, Req, State) of
         {ok, NewState} ->
+          ID = maps:get(PK, Payload),
           SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(ID)]),
           {{true, SelfUrl}, Req, NewState};
         {ok, #{PK := NewID}, NewState} ->
