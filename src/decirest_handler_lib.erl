@@ -228,7 +228,7 @@ return_error(Errors, Req, State) ->
   ReqNew = decirest_req:set_resp_body(RespBody, Req),
   {false, ReqNew, State}.
 
--spec persist_data(binary(), map(), #{'module' := atom(), _ => _}) -> any().
+-spec persist_data(map(), map(), #{'module' := atom(), _ => _}) -> any().
 persist_data(Body, Req, State = #{module := Module}) ->
   case is_exported(Module, persist_data, 3) of
     true ->

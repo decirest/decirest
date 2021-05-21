@@ -18,7 +18,7 @@ schema_to_md(Json) ->
 pretty_prop({Property, Json}, #{level := Level, required := Required}) ->
   {Indentation, ListSymbol} = style_level(Level),
   Default =  maps:get(<<"default">>, Json, undefined),
-  Type = maps:get(<<"type">>, Json, <<"object">>),
+  Type = get_type_md(Json),
   RequiredProps = get_required_properties(Type, Json),
   Properties = get_properties(Type, Json),
   List = maps:get(<<"enum">>, Json, []),
@@ -38,7 +38,9 @@ style_level(0) ->
 style_level(1) ->
   {<<"    ">>, <<"* ">>};
 style_level(2) ->
-  {<<"        ">>, <<"- ">>}.
+  {<<"        ">>, <<"- ">>};
+style_level(3) ->
+  {<<"            ">>, <<"+ ">>}.
 
 get_required_properties(<<"array">>, Json) ->
   maps:get(<<"required">>, maps:get(<<"items">>, Json, #{}), []);
@@ -49,6 +51,15 @@ get_properties(<<"array">>, Json) ->
   maps:get(<<"properties">>, maps:get(<<"items">>, Json, #{}), #{});
 get_properties(_, Json) ->
   maps:get(<<"properties">>, Json, #{}).
+
+get_type_md(Json) ->
+  % type is either a single type (string) or a list of types ([string])
+  Type = maps:get(<<"type">>, Json, <<"object">>),
+  case is_list(Type) of
+    true -> lists:join(<<", ">>, Type);
+    false -> Type
+  end.
+
 
 get_title_md(undefined, Json, Required) ->
   % assume top-level, get "title" instead
@@ -66,8 +77,14 @@ get_description_md(undefined, _) ->
 get_description_md(Description, Indentation) ->
   [<<"\n">>, Indentation, Description, <<"\n">>].
 
-get_list_md(List, Indentation, ListSymbol) ->
-  [[Indentation, ListSymbol, E, <<"\n">>] || E <- List].
+get_list_md([], Indentation, ListSymbol) ->
+  [];
+get_list_md([H|T], Indentation, ListSymbol) ->
+  Row = [Indentation, ListSymbol, jiffy:encode(H, [pretty]), <<"\n">>],
+  [ Row | get_list_md(T, Indentation, ListSymbol)].
+
+  %get_list_md(List, Indentation, ListSymbol) ->
+%  [[Indentation, ListSymbol, E, <<"\n">>] || E <- List].
 
 get_default_md(undefined, _Indentation) ->
   [];

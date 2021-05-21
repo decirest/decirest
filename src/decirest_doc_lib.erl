@@ -35,9 +35,16 @@ fetch_doc_by_path(Ref, Req, State) ->
       stop
   end.
 
-make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module}, Req0, State0) ->
+make_doc_map(Ref, Handler, HandlerOpts = #{main_module := Module0}, Req0, State0) ->
   %% makes it possible to reroute to a different module
-  {_, Req, State} = decirest:do_callback(Module, init, Req0, State0, undefined),
+  {_, Req, State} = decirest:do_callback(Module0, init, Req0, State0, undefined),
+
+  DocModule = maps:get(main_module, State0),  % This is the doc handler module itself
+  %% call to init may have changed the module
+  Module = case maps:get(main_module, State) of
+    DocModule -> Module0;  % init did not change module, so use module from handler opts
+    NewModule -> NewModule
+  end,
 
   D0 = #{name => atom_to_binary(Module, utf8), module => Module},
   D1 = maps:merge(D0, fetch_info(Module, Handler, HandlerOpts, Req, State)),
