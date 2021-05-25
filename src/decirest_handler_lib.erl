@@ -44,8 +44,14 @@
 init_rest(Req, State) ->
   decirest:do_callback(init, Req, State, fun init_rest_default/2).
 
-init_rest_default(Req, State) ->
-  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
+%init_rest_default(Req, State) ->
+%  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State#{rstate => #{}}}.
+
+init_rest_default(Req, #{mro_call := true} = State) ->
+  {cowboy_rest, Req#{bindings => decirest_query:get_bindings(Req, State)}, State};
+init_rest_default(Req, #{module := Module} = State) ->
+  {Res, ReqNew, StateNew} = decirest:call_mro(init_rest, Req, State#{rstate => #{}}, cowboy_rest, always_true),
+  {maps:get(Module, Res, false), ReqNew, StateNew}.
 
 -spec is_authorized(_, #{module := atom(), _ => _}) -> any().
 is_authorized(Req, State = #{module := Module}) ->

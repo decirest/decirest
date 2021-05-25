@@ -145,13 +145,12 @@ to_json(Req, State = #{module := Module}) ->
 
 to_json_default(Req, State) ->
   Data0 = fetch_data(Req, State),
-  Data = filter_data_on_pk(Data0, Req, State),
-  Data1 = maybe_sort(Req, Data),
+  Data1 = maybe_sort(Req, Data0),
   Data2 = decirest_handler_lib:prepare_output(Data1, State),
   Data3 = decirest_handler_lib:validate_output(collection, Data2, State),
-
+  Data = filter_data_on_pk(Data3, Req, State),
   PrettyConfig = decirest_handler_lib:maybe_pretty(Req, State),
-  {jiffy:encode(Data3, [force_utf8] ++ PrettyConfig), Req, State}.
+  {jiffy:encode(Data, [force_utf8] ++ PrettyConfig), Req, State}.
 
 maybe_sort(Req, Data) ->
   case decirest_req:binding(sort_by, Req) of
