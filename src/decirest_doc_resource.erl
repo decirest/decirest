@@ -57,7 +57,7 @@ to_html(Req, State) ->
   {ok, Css} = get_css_file(),
   PreMd = <<"<!doctype html>  <html>  <head>", "<meta charset='utf-8'/>  <title>API DOC</title> <style>", Css/binary,
     "</style> </head>  <body>  <div id='content'></div>  <pre id='raw' hidden>">>,
-  Script = <<"<script src='https://cdn.jsdelivr.net/npm/marked/marked.min.js'></script> <script>  document.getElementById('content').innerHTML =marked(document.getElementById('raw').innerHTML);</script>">>,
+  Script = <<"<script src='https://cdn.jsdelivr.net/npm/marked@4.0.0/marked.min.js'></script> <script>  document.getElementById('content').innerHTML =marked.parse(document.getElementById('raw').innerHTML);</script>">>,
   PostMd = <<"</pre>", Script/binary, "</body></html>">>,
   {<<PreMd/binary, Body/binary, PostMd/binary>>, Req, State}.
 
