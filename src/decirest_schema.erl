@@ -88,7 +88,7 @@ get_description_md(undefined, _) -> [];
 get_description_md(Description, Indentation) ->
     [<<"\n">>, Indentation, Description, <<"\n">>].
 
-get_list_md([], Indentation, ListSymbol) -> [];
+get_list_md([], _Indentation, _ListSymbol) -> [];
 get_list_md([H | T], Indentation, ListSymbol) ->
     Row = [Indentation, ListSymbol, jiffy:encode(H, [pretty]), <<"\n">>],
     [Row | get_list_md(T, Indentation, ListSymbol)].
