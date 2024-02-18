@@ -42,6 +42,7 @@
 -type opts() ::
     #{hosts => [host()],
       state => state(),
+      imaparent => boolean(),
       nostatic => boolean(),
       all_modules => [module()],
       pp_mod => module(),

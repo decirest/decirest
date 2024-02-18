@@ -133,7 +133,7 @@ build_route(Module, Options) ->
 -spec merge_with_parents([module()], [route_path()], decirest:opts(), [[route_path()]]) ->
                             [[route_path()]].
 merge_with_parents([Parent | Parents], Paths, Options, Res) ->
-    ParentRoutes = lists:flatten(build_module_routes(Parent, Options)),
+    ParentRoutes = lists:flatten(build_module_routes(Parent, Options#{imaparent => true})),
     merge_with_parents(Parents, Paths, Options, merge_with_parent(ParentRoutes, Paths, Res));
 merge_with_parents([], _Paths, _Options, Res) -> Res.
 
