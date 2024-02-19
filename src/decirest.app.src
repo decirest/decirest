@@ -3,7 +3,7 @@
 	{vsn, "0.1.0"},
 	{modules, ['decirest','decirest_app','decirest_auth','decirest_collection_handler','decirest_router','decirest_single_handler','decirest_sup','decirest_validator','std_response_html_dtl']},
 	{registered, [decirest_sup]},
-	{applications, [kernel,stdlib,cowboy,jsx,jiffy,jesse,erlydtl,lager,inets]},
+	{applications, [kernel,stdlib,cowboy,jsx,jiffy,jesse,erlydtl,lager,inets,epipe]},
 	{mod, {decirest_app, []}},
 	{env, []}
 ]}.
