@@ -154,7 +154,7 @@ validate_payload(Body, Req = #{method := Method}, State) ->
             case decirest_handler_lib:persist_data(Payload, Req, State) of
                 {ok, NewState} -> {true, Req, NewState};
                 {error, NewState} ->
-                    ReqNew = decirest_req:set_resp_body(<<"error">>, Req),
+                    ReqNew = decirest_req:reply(500, #{}, <<"error">>, Req),
                     {stop, ReqNew, NewState};
                 {StatusCode, NewState} when is_number(StatusCode) ->
                     ReqNew = decirest_req:reply(StatusCode, Req),

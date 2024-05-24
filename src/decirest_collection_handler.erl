@@ -124,7 +124,7 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
                     SelfUrl = decirest:pretty_path([Path, "/", decirest:t2b(NewID)]),
                     {{true, SelfUrl}, Req, NewState};
                 {error, NewState} ->
-                    ReqNew = decirest_req:set_resp_body(<<"error">>, Req),
+                    ReqNew = decirest_req:reply(500, #{}, <<"error">>, Req),
                     {stop, ReqNew, NewState};
                 {StatusCode, NewState} when is_number(StatusCode) ->
                     ReqNew = decirest_req:reply(StatusCode, Req),
