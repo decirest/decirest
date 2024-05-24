@@ -29,8 +29,8 @@ start_decirest() ->
   ],
 
   lager:set_loglevel(lager_console_backend, debug),
-  Rotes = decirest_router:build_routes(Modules),
-  Dispatch = cowboy_router:compile(Rotes),
+  Routes = decirest_router:build_routes(example, Modules),
+  Dispatch = cowboy_router:compile(Routes),
   code:ensure_modules_loaded([decirest_collection_handler, decirest_single_handler]),
   {ok, _} = cowboy:start_clear(dr_example, [{port, 8081}],
     #{env => #{dispatch => Dispatch}}
