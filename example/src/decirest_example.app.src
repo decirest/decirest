@@ -3,7 +3,7 @@
   {vsn, "0.1.0"},
   {modules, []},
   {registered, [decirest_example_sup]},
-  {applications, [decirest, lager]},
+  {applications, [decirest, lager, kernel, stdlib]},
   {mod, {decirest_example_app, []}},
   {env, []}
 ]}.
