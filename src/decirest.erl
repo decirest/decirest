@@ -33,7 +33,7 @@
 
 -type host() :: string() | atom().
 -type state() ::
-    #{decirest_auth_module := module(),
+    #{decirest_auth_module => module(),
       main_module => module(),
       mro => [{module(), module()}],
       module => module(),
