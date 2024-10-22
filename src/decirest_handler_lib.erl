@@ -225,6 +225,7 @@ epipe_resp({ok, Res}, Req, State) -> {ok, {Res, Req, State}};
 epipe_resp(Error, _Req, _State) -> Error.
 
 unwrap_epipe({ok, {Res, _Req, _State}}) -> {ok, Res};
+unwrap_epipe({error, _Fun, stop, {_, Req, State}}) -> {stop, Req, State};
 unwrap_epipe({error, _Fun, Error, _}) -> {error, Error}.
 
 return_error(Errors, Req, State) ->

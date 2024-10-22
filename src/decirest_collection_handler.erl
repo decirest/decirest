@@ -133,7 +133,8 @@ handle_body(Body, Req = #{path := Path}, State = #{module := Module}) ->
                     ReqNew = decirest_req:reply(StatusCode, #{}, RespBody, Req),
                     {stop, ReqNew, NewState}
             end;
-        {error, Errors} -> decirest_handler_lib:return_error(Errors, Req, State)
+        {error, Errors} -> decirest_handler_lib:return_error(Errors, Req, State);
+        {stop, ReqNew, NewState} -> {stop, ReqNew, NewState}
     end.
 
 -spec content_types_provided(_,
