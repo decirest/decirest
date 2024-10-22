@@ -36,8 +36,11 @@
     #{decirest_auth_module => module(),
       main_module => module(),
       mro => [{module(), module()}],
+      mro_call => boolean(),
       module => module(),
       children => boolean() | hidden,
+      method => binary(),
+      module_binding => binary(),
       _ => _}.
 -type opts() ::
     #{hosts => [host()],
