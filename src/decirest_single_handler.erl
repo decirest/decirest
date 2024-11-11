@@ -137,9 +137,16 @@ validate_action(Body, Req, State) ->
                 {ok, ResBody} ->
                     RespBody = jiffy:encode(ResBody, [force_utf8]),
                     ReqNew = decirest_req:set_resp_body(RespBody, Req),
-                    {true, ReqNew, State}
+                    {true, ReqNew, State};
+                {StatusCode, NewState} when is_number(StatusCode) ->
+                    ReqNew = decirest_req:reply(StatusCode, Req),
+                    {stop, ReqNew, NewState};
+                {StatusCode, RespBody, NewState} when is_number(StatusCode) ->
+                    ReqNew = decirest_req:reply(StatusCode, #{}, RespBody, Req),
+                    {stop, ReqNew, NewState}
             end;
-        {error, Error} -> decirest_handler_lib:return_error(Error, Req, State)
+        {error, Error} -> decirest_handler_lib:return_error(Error, Req, State);
+        {stop, NewReq, NewState} -> {stop, NewReq, NewState}
     end.
 
 validate_payload(Body, Req = #{method := Method}, State) ->
